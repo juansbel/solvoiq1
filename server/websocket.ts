@@ -1,61 +1,79 @@
 import { WebSocketServer, WebSocket } from 'ws';
 import { Server } from 'http';
 import { storage } from './index';
+import { log } from './vite';
 
 interface WebSocketMessage {
-  type: 'task_update' | 'client_update' | 'team_update' | 'notification';
+  type: 'task_update' | 'client_update' | 'team_update' | 'notification' | 'performance';
   data: any;
   timestamp: number;
+}
+
+interface PerformanceMetrics {
+  timestamp: number;
+  cpu: number;
+  memory: number;
+  activeConnections: number;
+  responseTime: number;
 }
 
 class WebSocketManager {
   private wss: WebSocketServer | null = null;
   private clients: Set<WebSocket> = new Set();
+  private metrics: PerformanceMetrics[] = [];
+  private readonly MAX_METRICS = 100;
 
   initialize(server: Server) {
-    this.wss = new WebSocketServer({ 
-      server,
-      path: '/api/ws'  // Use dedicated path to avoid conflicts with Vite
-    });
-
-    this.wss.on('connection', (ws: WebSocket) => {
-      console.log('WebSocket client connected');
-      this.clients.add(ws);
-
-      // Send welcome message
-      this.sendToClient(ws, {
-        type: 'notification',
-        data: {
-          title: 'Connected',
-          message: 'Real-time updates enabled'
-        },
-        timestamp: Date.now()
-      });
-
-      // Handle client messages
-      ws.on('message', (message: Buffer) => {
-        try {
-          const data = JSON.parse(message.toString());
-          this.handleClientMessage(ws, data);
-        } catch (error) {
-          console.error('Error parsing WebSocket message:', error);
-        }
-      });
-
-      // Handle client disconnect
-      ws.on('close', () => {
-        console.log('WebSocket client disconnected');
-        this.clients.delete(ws);
-      });
-
-      // Handle errors
+    this.wss = new WebSocketServer({ server });
+    
+    this.wss.on('connection', (ws) => {
+      log('New WebSocket connection established');
+      
+      // Send initial metrics
+      this.sendMetrics(ws);
+      
       ws.on('error', (error) => {
         console.error('WebSocket error:', error);
-        this.clients.delete(ws);
+      });
+      
+      ws.on('close', () => {
+        log('WebSocket connection closed');
       });
     });
+    
+    log('WebSocket server initialized');
+  }
 
-    console.log('WebSocket server initialized');
+  private sendMetrics(ws: any) {
+    const metrics = this.getCurrentMetrics();
+    try {
+      ws.send(JSON.stringify(metrics));
+    } catch (error) {
+      console.error('Error sending metrics:', error);
+    }
+  }
+
+  private getCurrentMetrics(): PerformanceMetrics {
+    const metrics = {
+      timestamp: Date.now(),
+      cpu: process.cpuUsage().user / 1000000, // Convert to seconds
+      memory: process.memoryUsage().heapUsed / 1024 / 1024, // Convert to MB
+      activeConnections: this.wss?.clients.size || 0,
+      responseTime: this.calculateAverageResponseTime()
+    };
+    
+    this.metrics.push(metrics);
+    if (this.metrics.length > this.MAX_METRICS) {
+      this.metrics.shift();
+    }
+    
+    return metrics;
+  }
+
+  private calculateAverageResponseTime(): number {
+    if (this.metrics.length === 0) return 0;
+    const sum = this.metrics.reduce((acc, m) => acc + m.responseTime, 0);
+    return sum / this.metrics.length;
   }
 
   private handleClientMessage(ws: WebSocket, message: any) {
@@ -86,18 +104,18 @@ class WebSocketManager {
   }
 
   broadcast(message: WebSocketMessage) {
-    const messageString = JSON.stringify(message);
+    if (!this.wss) return;
     
-    this.clients.forEach(client => {
+    const messageStr = JSON.stringify(message);
+    this.wss.clients.forEach((client) => {
       if (client.readyState === WebSocket.OPEN) {
-        client.send(messageString);
-      } else {
-        // Remove dead connections
-        this.clients.delete(client);
+        try {
+          client.send(messageStr);
+        } catch (error) {
+          console.error('Error broadcasting message:', error);
+        }
       }
     });
-
-    console.log(`Broadcasted ${message.type} to ${this.clients.size} clients`);
   }
 
   // Notify clients about task updates
@@ -179,83 +197,26 @@ class WebSocketManager {
   }
 
   close() {
-    this.clients.forEach(client => {
-      client.close();
-    });
-    this.clients.clear();
-    
     if (this.wss) {
-      this.wss.close();
+      this.wss.close(() => {
+        log('WebSocket server closed');
+      });
     }
   }
 }
 
 export const wsManager = new WebSocketManager();
 
-// Monitoring function to track performance and send alerts
 export function startPerformanceMonitoring() {
-  setInterval(async () => {
+  setInterval(() => {
     try {
-      // Get current statistics
-      const stats = await storage.getStatistics();
-      const clients = await storage.getClients();
-      const tasks = await storage.getTasks();
-      const teamMembers = await storage.getTeamMembers();
-
-      // Calculate metrics
-      const completionRate = stats.tasksCreated && stats.tasksCreated > 0 && stats.tasksCompleted !== null
-        ? (stats.tasksCompleted / stats.tasksCreated) * 100 : 0;
-      const totalRevenue = clients.reduce((sum, client) => {
-        return sum + (client.kpis?.reduce((kpiSum, kpi) => {
-          return kpiSum + (typeof kpi.actual === 'number' ? kpi.actual : 0);
-        }, 0) || 0);
-      }, 0);
-
-      const urgentTasks = tasks.filter(task => 
-        task.priority === 'high' || task.priority === 'critical'
-      ).length;
-
-      const clientHealthScores = clients.map(client => {
-        const kpis = client.kpis || [];
-        const metKpis = kpis.filter(kpi => kpi.met).length;
-        return kpis.length > 0 ? (metKpis / kpis.length) * 100 : 100;
+      const metrics = wsManager.getCurrentMetrics();
+      wsManager.broadcast({
+        type: 'performance',
+        data: metrics
       });
-
-      const avgClientHealth = clientHealthScores.length > 0 
-        ? clientHealthScores.reduce((sum, score) => sum + score, 0) / clientHealthScores.length 
-        : 100;
-
-      // Send alerts based on thresholds
-      if (completionRate < 70 && stats.tasksCreated && stats.tasksCreated > 0) {
-        wsManager.sendBusinessAlert('task_completion', {
-          message: `Task completion rate is ${completionRate.toFixed(1)}% - below target threshold`,
-          metrics: { completionRate, totalTasks: tasks.length }
-        });
-      }
-
-      if (urgentTasks > 3) {
-        wsManager.sendBusinessAlert('task_completion', {
-          message: `${urgentTasks} urgent tasks require immediate attention`,
-          metrics: { urgentTasks, totalTasks: tasks.length }
-        });
-      }
-
-      if (avgClientHealth < 75 && clients.length > 0) {
-        wsManager.sendBusinessAlert('client_health', {
-          message: `Average client health is ${avgClientHealth.toFixed(1)}% - review needed`,
-          metrics: { avgClientHealth, totalClients: clients.length }
-        });
-      }
-
-      if (totalRevenue > 50000) {
-        wsManager.sendBusinessAlert('revenue', {
-          message: `Revenue milestone reached: $${totalRevenue.toLocaleString()}`,
-          metrics: { totalRevenue, clientCount: clients.length }
-        });
-      }
-
     } catch (error) {
       console.error('Performance monitoring error:', error);
     }
-  }, 30000); // Check every 30 seconds
+  }, 5000); // Send metrics every 5 seconds
 }

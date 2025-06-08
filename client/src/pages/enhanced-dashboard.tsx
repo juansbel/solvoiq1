@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { NotificationCenter } from "@/components/notification-center";
 import { FloatingNotifications, useFloatingNotifications } from "@/components/ui/floating-notifications";
+import { useMobile } from "@/hooks/use-mobile";
 import { 
   Users, 
   CheckSquare, 

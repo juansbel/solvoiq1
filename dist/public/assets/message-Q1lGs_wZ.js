@@ -1,0 +1,6 @@
+import{t as x,j as o,ac as e,f as a,l as d,aq as g}from"./index-Dsch-6rs.js";/**
+ * @license lucide-react v0.453.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */const m=x("CircleX",[["circle",{cx:"12",cy:"12",r:"10",key:"1mglay"}],["path",{d:"m15 9-6 6",key:"1uzhvr"}],["path",{d:"m9 9 6 6",key:"z0biqf"}]]);function y({type:r,children:l,className:t}){const c={success:{icon:a,bgColor:"bg-green-50",borderColor:"border-green-200",textColor:"text-green-800",iconColor:"text-green-600"},error:{icon:m,bgColor:"bg-red-50",borderColor:"border-red-200",textColor:"text-red-800",iconColor:"text-red-600"},warning:{icon:d,bgColor:"bg-yellow-50",borderColor:"border-yellow-200",textColor:"text-yellow-800",iconColor:"text-yellow-600"},info:{icon:g,bgColor:"bg-blue-50",borderColor:"border-blue-200",textColor:"text-blue-800",iconColor:"text-blue-600"}},{icon:n,bgColor:s,borderColor:i,textColor:C,iconColor:b}=c[r];return o.jsxs("div",{className:e("p-4 rounded-lg border flex items-center space-x-2",s,i,t),children:[o.jsx(n,{className:e("w-4 h-4",b)}),o.jsx("div",{className:e("text-sm",C),children:l})]})}export{y as M};

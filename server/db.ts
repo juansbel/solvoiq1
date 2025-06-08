@@ -25,17 +25,46 @@ import type {
 
 export class DrizzleStorage implements IStorage {
   private db: ReturnType<typeof drizzle>;
+  private sql: ReturnType<typeof postgres>;
 
   constructor(databaseUrl: string) {
-    const sql = postgres(databaseUrl, {
-      max: 5,
-      idle_timeout: 10,
-      connect_timeout: 10,
+    this.sql = postgres(databaseUrl, {
+      max: 10,
+      idle_timeout: 20,
+      connect_timeout: 20,
       prepare: false,
-      ssl: 'require',
-      transform: postgres.camel
+      ssl: {
+        rejectUnauthorized: false
+      },
+      transform: postgres.camel,
+      onnotice: () => {},
+      onparameter: () => {},
+      debug: process.env.NODE_ENV === 'development',
+      connection: {
+        application_name: 'solvoiq_app',
+        statement_timeout: 30000,
+      }
     });
-    this.db = drizzle(sql, { schema });
+
+    this.db = drizzle(this.sql, { schema });
+  }
+
+  async checkConnection(): Promise<boolean> {
+    try {
+      await this.sql`SELECT 1`;
+      return true;
+    } catch (error) {
+      console.error('Database connection check failed:', error);
+      return false;
+    }
+  }
+
+  async shutdown(): Promise<void> {
+    try {
+      await this.sql.end();
+    } catch (error) {
+      console.error('Error during database shutdown:', error);
+    }
   }
 
   async getUser(id: number): Promise<User | undefined> {
@@ -63,7 +92,6 @@ export class DrizzleStorage implements IStorage {
   }
 
   async createClient(client: InsertClient): Promise<Client> {
-    // Deep clone and convert array-like objects to proper arrays for Drizzle
     const clientData = {
       ...client,
       assignedTeamMembers: client.assignedTeamMembers ? JSON.parse(JSON.stringify(client.assignedTeamMembers)) : [],
@@ -80,7 +108,7 @@ export class DrizzleStorage implements IStorage {
 
   async deleteClient(id: number): Promise<boolean> {
     const result = await this.db.delete(clients).where(eq(clients.id, id));
-    return true; // Assume success if no error thrown
+    return true;
   }
 
   async getTeamMembers(): Promise<TeamMember[]> {
@@ -93,7 +121,6 @@ export class DrizzleStorage implements IStorage {
   }
 
   async createTeamMember(member: InsertTeamMember): Promise<TeamMember> {
-    // Deep clone and convert array-like objects to proper arrays for Drizzle
     const memberData = {
       ...member,
       skills: member.skills ? JSON.parse(JSON.stringify(member.skills)) : [],
@@ -106,7 +133,7 @@ export class DrizzleStorage implements IStorage {
 
   async deleteTeamMember(id: number): Promise<boolean> {
     const result = await this.db.delete(teamMembers).where(eq(teamMembers.id, id));
-    return true; // Assume success if no error thrown
+    return true;
   }
 
   async getTasks(): Promise<Task[]> {
@@ -130,7 +157,7 @@ export class DrizzleStorage implements IStorage {
 
   async deleteTask(id: number): Promise<boolean> {
     const result = await this.db.delete(tasks).where(eq(tasks.id, id));
-    return true; // Assume success if no error thrown
+    return true;
   }
 
   async getEmailTemplates(): Promise<EmailTemplate[]> {
@@ -161,7 +188,6 @@ export class DrizzleStorage implements IStorage {
   async getStatistics(): Promise<Statistics> {
     const result = await this.db.select().from(schema.statistics).limit(1);
     if (result.length === 0) {
-      // Create default statistics if none exist
       const defaultStats = {
         userId: "1",
         communicationsSent: 0,
@@ -183,7 +209,6 @@ export class DrizzleStorage implements IStorage {
   async getAiContext(): Promise<AiContext | undefined> {
     const result = await this.db.select().from(aiContext).limit(1);
     if (result.length === 0) {
-      // Create default AI context if none exists
       const defaultContext = {
         userId: "1",
         content: `Company: TechSolutions Inc.
