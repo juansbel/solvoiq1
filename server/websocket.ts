@@ -16,7 +16,20 @@ export interface PerformanceMetrics {
   uptime: number;
 }
 
-export class WebSocketManager {
+export interface IWebSocketManager {
+  broadcast(message: WebSocketMessage): void;
+  sendPerformanceMetrics(metrics: PerformanceMetrics): void;
+  notifyTaskUpdate(taskId: number, action: 'created' | 'updated' | 'deleted'): void;
+  notifyClientUpdate(clientId: number, action: 'created' | 'updated' | 'deleted'): void;
+  notifyTeamUpdate(memberId: number, action: 'created' | 'updated' | 'deleted'): void;
+  sendNotification(title: string, message: string, priority?: 'high' | 'medium' | 'low'): void;
+  sendBusinessAlert(type: 'revenue' | 'task_completion' | 'client_health' | 'team_performance', data: any): void;
+  getConnectionCount(): number;
+  close(): void;
+  getCurrentMetrics(): PerformanceMetrics;
+}
+
+export class WebSocketManager implements IWebSocketManager {
   private wss: WebSocketServer;
   private clients: Map<string, WebSocket>;
 
@@ -168,20 +181,39 @@ export class WebSocketManager {
       });
     }
   }
+
+  getCurrentMetrics(): PerformanceMetrics {
+    // Implementation of getCurrentMetrics method
+    // This is a placeholder and should be implemented based on your actual requirements
+    return { cpu: 0, memory: 0, uptime: 0 };
+  }
 }
 
-export const wsManager = new WebSocketManager();
+let wsManagerInstance: IWebSocketManager = new WebSocketManager(null);
+
+export function initializeWebSocketManager(server?: Server): IWebSocketManager {
+  if (server) {
+    wsManagerInstance = new WebSocketManager(server);
+  } else {
+    log('Dummy WebSocketManager initialized');
+  }
+  return wsManagerInstance;
+}
+
+export { wsManagerInstance as wsManager };
 
 export function startPerformanceMonitoring() {
-  setInterval(() => {
-    try {
-      const metrics = wsManager.getCurrentMetrics();
-      wsManager.broadcast({
-        type: 'performance',
-        data: metrics
-      });
-    } catch (error) {
-      console.error('Performance monitoring error:', error);
-    }
-  }, 5000); // Send metrics every 5 seconds
+  if (wsManagerInstance instanceof WebSocketManager) {
+    log('Starting performance monitoring');
+    setInterval(() => {
+      try {
+        const metrics = wsManagerInstance.getCurrentMetrics();
+        wsManagerInstance.sendPerformanceMetrics(metrics);
+      } catch (error) {
+        log('Performance monitoring error:', error);
+      }
+    }, 5000);
+  } else {
+    log('Performance monitoring disabled for dummy WebSocketManager');
+  }
 }
