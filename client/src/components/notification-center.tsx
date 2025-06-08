@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -19,16 +19,12 @@ import {
 import { cn } from "@/lib/utils";
 
 interface Notification {
-  id: string;
-  type: "alert" | "opportunity" | "task" | "client" | "revenue" | "system";
+  id: number;
   title: string;
-  message: string;
-  timestamp: Date;
-  priority: "high" | "medium" | "low";
+  description: string;
+  type: 'info' | 'success' | 'warning' | 'error';
   read: boolean;
-  actionable: boolean;
-  relatedPage?: string;
-  metadata?: any;
+  timestamp: Date;
 }
 
 interface NotificationCenterProps {
@@ -36,75 +32,10 @@ interface NotificationCenterProps {
 }
 
 const SAMPLE_NOTIFICATIONS: Notification[] = [
-  {
-    id: "1",
-    type: "alert",
-    title: "Client Churn Risk Detected",
-    message: "TechCorp Industries shows 40% engagement drop in last 7 days",
-    timestamp: new Date(Date.now() - 30 * 60 * 1000), // 30 minutes ago
-    priority: "high",
-    read: false,
-    actionable: true,
-    relatedPage: "clients",
-    metadata: { clientId: 1 }
-  },
-  {
-    id: "2",
-    type: "opportunity",
-    title: "Premium Upgrade Opportunity",
-    message: "StartupXYZ shows 85% probability for premium upgrade",
-    timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2 hours ago
-    priority: "medium",
-    read: false,
-    actionable: true,
-    relatedPage: "analytics",
-    metadata: { opportunity: "premium_upgrade" }
-  },
-  {
-    id: "3",
-    type: "revenue",
-    title: "Monthly Target Achievement",
-    message: "97.5% of monthly revenue target achieved with 5 days remaining",
-    timestamp: new Date(Date.now() - 4 * 60 * 60 * 1000), // 4 hours ago
-    priority: "medium",
-    read: true,
-    actionable: false,
-    relatedPage: "commission"
-  },
-  {
-    id: "4",
-    type: "task",
-    title: "High Priority Task Overdue",
-    message: "Follow-up call with Global Solutions is 2 days overdue",
-    timestamp: new Date(Date.now() - 6 * 60 * 60 * 1000), // 6 hours ago
-    priority: "high",
-    read: false,
-    actionable: true,
-    relatedPage: "tasks",
-    metadata: { taskId: 3 }
-  },
-  {
-    id: "5",
-    type: "client",
-    title: "New Client Onboarded",
-    message: "Innovation Labs successfully onboarded with premium package",
-    timestamp: new Date(Date.now() - 8 * 60 * 60 * 1000), // 8 hours ago
-    priority: "low",
-    read: true,
-    actionable: false,
-    relatedPage: "clients"
-  },
-  {
-    id: "6",
-    type: "system",
-    title: "AI Automation Update",
-    message: "12 new automation rules activated, saving 34h/week",
-    timestamp: new Date(Date.now() - 12 * 60 * 60 * 1000), // 12 hours ago
-    priority: "low",
-    read: true,
-    actionable: false,
-    relatedPage: "automation"
-  }
+  { id: 1, title: 'New Client Assigned', description: 'John Doe has been assigned to you.', type: 'info', read: false, timestamp: new Date() },
+  { id: 2, title: 'Task Completed', description: 'Your task "Prepare Q3 Report" is due tomorrow.', type: 'success', read: false, timestamp: new Date(Date.now() - 3600000) },
+  { id: 3, title: 'High Churn Risk', description: 'Client "Innovate Inc." has a high churn risk score.', type: 'warning', read: true, timestamp: new Date(Date.now() - 86400000) },
+  { id: 4, title: 'API Error', description: 'Failed to sync data with Salesforce.', type: 'error', read: true, timestamp: new Date(Date.now() - 172800000) },
 ];
 
 export function NotificationCenter({ onNavigate }: NotificationCenterProps) {
@@ -113,20 +44,20 @@ export function NotificationCenter({ onNavigate }: NotificationCenterProps) {
   const [isOpen, setIsOpen] = useState(false);
 
   const unreadCount = notifications.filter(n => !n.read).length;
-  const highPriorityCount = notifications.filter(n => n.priority === "high" && !n.read).length;
+  const highPriorityCount = notifications.filter(n => n.type === "warning" && !n.read).length;
 
   const filteredNotifications = notifications.filter(notification => {
     switch (filter) {
       case "unread":
         return !notification.read;
       case "high":
-        return notification.priority === "high";
+        return notification.type === "warning";
       default:
         return true;
     }
   });
 
-  const markAsRead = (id: string) => {
+  const markAsRead = (id: number) => {
     setNotifications(prev => 
       prev.map(n => n.id === id ? { ...n, read: true } : n)
     );
@@ -138,24 +69,20 @@ export function NotificationCenter({ onNavigate }: NotificationCenterProps) {
     );
   };
 
-  const dismissNotification = (id: string) => {
+  const dismissNotification = (id: number) => {
     setNotifications(prev => prev.filter(n => n.id !== id));
   };
 
   const getNotificationIcon = (type: string) => {
     switch (type) {
-      case "alert":
+      case "info":
+        return <AlertTriangle className="h-4 w-4 text-blue-500" />;
+      case "success":
+        return <CheckCircle className="h-4 w-4 text-green-500" />;
+      case "warning":
+        return <AlertTriangle className="h-4 w-4 text-yellow-500" />;
+      case "error":
         return <AlertTriangle className="h-4 w-4 text-red-500" />;
-      case "opportunity":
-        return <Target className="h-4 w-4 text-green-500" />;
-      case "revenue":
-        return <DollarSign className="h-4 w-4 text-blue-500" />;
-      case "task":
-        return <Clock className="h-4 w-4 text-orange-500" />;
-      case "client":
-        return <Users className="h-4 w-4 text-purple-500" />;
-      case "system":
-        return <Settings className="h-4 w-4 text-gray-500" />;
       default:
         return <Bell className="h-4 w-4" />;
     }
@@ -192,8 +119,8 @@ export function NotificationCenter({ onNavigate }: NotificationCenterProps) {
 
   const handleNotificationClick = (notification: Notification) => {
     markAsRead(notification.id);
-    if (notification.actionable && notification.relatedPage && onNavigate) {
-      onNavigate(notification.relatedPage);
+    if (notification.type === "warning" && onNavigate) {
+      onNavigate("clients");
       setIsOpen(false);
     }
   };
@@ -291,7 +218,7 @@ export function NotificationCenter({ onNavigate }: NotificationCenterProps) {
                       className={cn(
                         "p-3 rounded-lg border transition-all cursor-pointer hover:bg-slate-50",
                         !notification.read ? "bg-blue-50 border-blue-200" : "bg-white border-slate-200",
-                        notification.actionable ? "hover:border-blue-300" : ""
+                        notification.type === "warning" ? "hover:border-yellow-300" : ""
                       )}
                       onClick={() => handleNotificationClick(notification)}
                     >
@@ -310,9 +237,9 @@ export function NotificationCenter({ onNavigate }: NotificationCenterProps) {
                             <div className="flex items-center gap-2 ml-2">
                               <Badge 
                                 variant="outline" 
-                                className={cn("text-xs", getPriorityColor(notification.priority))}
+                                className={cn("text-xs", getPriorityColor(notification.type))}
                               >
-                                {notification.priority}
+                                {notification.type.charAt(0).toUpperCase() + notification.type.slice(1)}
                               </Badge>
                               <Button
                                 variant="ghost"
@@ -328,13 +255,13 @@ export function NotificationCenter({ onNavigate }: NotificationCenterProps) {
                             </div>
                           </div>
                           <p className="text-xs text-slate-600 mb-2">
-                            {notification.message}
+                            {notification.description}
                           </p>
                           <div className="flex items-center justify-between">
                             <span className="text-xs text-slate-500">
                               {formatTimestamp(notification.timestamp)}
                             </span>
-                            {notification.actionable && (
+                            {notification.type === "warning" && (
                               <Badge variant="outline" className="text-xs">
                                 Click to view
                               </Badge>

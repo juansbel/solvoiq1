@@ -1,20 +1,21 @@
+import React from 'react';
 import { cn } from "@/lib/utils";
 
-interface SkeletonProps extends React.HTMLAttributes<HTMLDivElement> {}
-
-function Skeleton({ className, ...props }: SkeletonProps) {
+const Skeleton = ({
+  className,
+  ...props
+}: React.HTMLAttributes<HTMLDivElement>) => {
   return (
     <div
-      className={cn("animate-pulse rounded-md bg-gray-300 dark:bg-gray-700", className)}
+      className={cn("animate-pulse rounded-md bg-muted", className)}
       {...props}
     />
   );
-}
+};
 
-export { Skeleton };
+interface CardSkeletonProps extends React.HTMLAttributes<HTMLDivElement> {}
 
-// Pre-built skeleton components for common use cases
-export function CardSkeleton() {
+const CardSkeleton: React.FC<CardSkeletonProps> = ({ className, ...props }) => {
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 space-y-4">
       <Skeleton className="h-4 w-3/4" />
@@ -26,8 +27,33 @@ export function CardSkeleton() {
       </div>
     </div>
   );
-}
+};
 
+const DashboardSkeleton: React.FC = () => {
+  return (
+    <div className="p-4 md:p-8">
+      <div className="grid gap-8">
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+          <CardSkeleton />
+          <CardSkeleton />
+          <CardSkeleton />
+          <CardSkeleton />
+        </div>
+        <div className="grid lg:grid-cols-2 gap-8">
+          <CardSkeleton className="h-64" />
+          <CardSkeleton className="h-64" />
+        </div>
+        <div>
+          <CardSkeleton className="h-96" />
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export { Skeleton, CardSkeleton, DashboardSkeleton };
+
+// Pre-built skeleton components for common use cases
 export function TableSkeleton({ rows = 5 }: { rows?: number }) {
   return (
     <div className="space-y-2">
@@ -39,22 +65,6 @@ export function TableSkeleton({ rows = 5 }: { rows?: number }) {
           <Skeleton className="h-4 w-1/6" />
         </div>
       ))}
-    </div>
-  );
-}
-
-export function DashboardSkeleton() {
-  return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <CardSkeleton key={i} />
-        ))}
-      </div>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <CardSkeleton />
-        <CardSkeleton />
-      </div>
     </div>
   );
 }

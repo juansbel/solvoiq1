@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useWebSocket, useRealTimeNotifications } from '@/hooks/use-websocket';
 import { useFloatingNotifications } from '@/components/ui/floating-notifications';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,14 +12,40 @@ import {
   Users, 
   CheckSquare, 
   AlertCircle,
-  Trash2
+  Trash2,
+  Zap,
+  CheckCircle,
+  AlertTriangle
 } from 'lucide-react';
+import { useTheme } from 'next-themes';
 
 interface LiveUpdatesProps {
   onDataUpdate?: (type: string, data: any) => void;
   showNotifications?: boolean;
   autoReconnect?: boolean;
 }
+
+interface LiveUpdate {
+    id: string;
+    type: 'task_completed' | 'client_added' | 'revenue_milestone' | 'system_alert';
+    message: string;
+    timestamp: number;
+}
+
+const getUpdateConfig = (type: LiveUpdate['type'], theme: string | undefined) => {
+    switch (type) {
+        case 'task_completed':
+            return { icon: CheckCircle, color: 'text-green-500', bgColor: theme === 'dark' ? 'bg-green-900/20' : 'bg-green-50' };
+        case 'client_added':
+            return { icon: Zap, color: 'text-blue-500', bgColor: theme === 'dark' ? 'bg-blue-900/20' : 'bg-blue-50' };
+        case 'revenue_milestone':
+            return { icon: Activity, color: 'text-yellow-500', bgColor: theme === 'dark' ? 'bg-yellow-900/20' : 'bg-yellow-50' };
+        case 'system_alert':
+            return { icon: AlertTriangle, color: 'text-red-500', bgColor: theme === 'dark' ? 'bg-red-900/20' : 'bg-red-50' };
+        default:
+            return { icon: Activity, color: 'text-gray-500', bgColor: theme === 'dark' ? 'bg-gray-700' : 'bg-gray-100' };
+    }
+};
 
 export function LiveUpdates({ 
   onDataUpdate, 
@@ -29,6 +55,8 @@ export function LiveUpdates({
   const [isPaused, setIsPaused] = useState(false);
   const [updateCount, setUpdateCount] = useState(0);
   const [lastUpdateTime, setLastUpdateTime] = useState<Date | null>(null);
+  const [updates, setUpdates] = useState<LiveUpdate[]>([]);
+  const { theme } = useTheme();
 
   const floatingNotifications = useFloatingNotifications();
 
@@ -46,6 +74,11 @@ export function LiveUpdates({
         message.data?.message || 'Data updated',
         { duration: 3000 }
       );
+    }
+
+    if (message.data) {
+      const newUpdate: LiveUpdate = { ...message.data, id: Date.now().toString() };
+      setUpdates(prev => [newUpdate, ...prev].slice(0, 50)); // Keep last 50 updates
     }
   }, [isPaused, onDataUpdate, showNotifications, floatingNotifications]);
 

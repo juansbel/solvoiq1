@@ -32,6 +32,8 @@ import {
   CheckCircle
 } from 'lucide-react';
 import type { Client, Task, TeamMember } from '@/../../shared/schema';
+import { useTheme } from 'next-themes';
+import { useMobile } from '@/hooks/use-mobile';
 
 interface AdvancedChartsProps {
   clients: Client[];
@@ -39,9 +41,28 @@ interface AdvancedChartsProps {
   teamMembers: TeamMember[];
 }
 
+interface ChartData {
+  name: string;
+  uv: number;
+  pv: number;
+  amt: number;
+}
+
+const data: ChartData[] = [
+  { name: 'Jan', uv: 4000, pv: 2400, amt: 2400 },
+  { name: 'Feb', uv: 3000, pv: 1398, amt: 2210 },
+  { name: 'Mar', uv: 2000, pv: 9800, amt: 2290 },
+  { name: 'Apr', uv: 2780, pv: 3908, amt: 2000 },
+  { name: 'May', uv: 1890, pv: 4800, amt: 2181 },
+  { name: 'Jun', uv: 2390, pv: 3800, amt: 2500 },
+  { name: 'Jul', uv: 3490, pv: 4300, amt: 2100 },
+];
+
 export function AdvancedCharts({ clients, tasks, teamMembers }: AdvancedChartsProps) {
   const [selectedTimeframe, setSelectedTimeframe] = useState<'7d' | '30d' | '90d' | '1y'>('30d');
   const [selectedMetric, setSelectedMetric] = useState<'revenue' | 'tasks' | 'clients' | 'team'>('revenue');
+  const { theme } = useTheme();
+  const { isMobile } = useMobile();
 
   // Calculate advanced analytics data
   const analyticsData = useMemo(() => {
@@ -220,6 +241,13 @@ export function AdvancedCharts({ clients, tasks, teamMembers }: AdvancedChartsPr
         return null;
     }
   };
+
+  const chartColors = useMemo(() => ({
+    stroke: theme === 'dark' ? '#4f4f4f' : '#dcdcdc',
+    uv: '#8884d8',
+    pv: '#82ca9d',
+    area: theme === 'dark' ? 'url(#colorUvDark)' : 'url(#colorUvLight)',
+  }), [theme]);
 
   return (
     <div className="space-y-6">
@@ -420,5 +448,36 @@ export function AdvancedCharts({ clients, tasks, teamMembers }: AdvancedChartsPr
         </TabsContent>
       </Tabs>
     </div>
+  );
+}
+
+const CustomTooltip = ({ active, payload, label }: { active?: boolean, payload?: {name: string, value: string | number, color: string}[], label?: string }) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="p-2 bg-background border rounded-md shadow-md">
+        <p className="font-bold">{label}</p>
+        {payload.map((pld, index) => (
+          <p key={index} style={{ color: pld.color }}>{`${pld.name}: ${pld.value}`}</p>
+        ))}
+      </div>
+    );
+  }
+
+  return null;
+};
+
+const CustomLegend = (props: { payload?: {color: string, value: string}[] }) => {
+  const { payload } = props;
+  return (
+    <ul className="flex justify-center space-x-4">
+      {
+        payload?.map((entry, index) => (
+          <li key={`item-${index}`} style={{ color: entry.color }} className="flex items-center">
+            <svg className="w-4 h-4 mr-2" viewBox="0 0 32 32" fill={entry.color}><path d="M0,4h32v24h-32z" /></svg>
+            {entry.value}
+          </li>
+        ))
+      }
+    </ul>
   );
 }

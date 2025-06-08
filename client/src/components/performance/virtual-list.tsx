@@ -1,143 +1,63 @@
-import React, { useState, useCallback } from 'react';
-import { useVirtualScrolling } from '@/hooks/use-performance-optimization';
-import { Card, CardContent } from '@/components/ui/card';
-import { Skeleton } from '@/components/ui/skeleton';
+import React, { useRef, useMemo } from 'react';
+import { useVirtualizer } from '@tanstack/react-virtual';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 interface VirtualListProps<T> {
-  items: T[];
-  itemHeight: number;
-  containerHeight: number;
-  renderItem: (item: T, index: number) => React.ReactNode;
-  keyExtractor: (item: T, index: number) => string | number;
-  loading?: boolean;
-  emptyMessage?: string;
-  className?: string;
-  overscan?: number;
+    items: T[];
+    renderItem: (item: T) => React.ReactNode;
+    estimateSize: () => number;
+    title: string;
 }
 
-export function VirtualList<T>({
-  items,
-  itemHeight,
-  containerHeight,
-  renderItem,
-  keyExtractor,
-  loading = false,
-  emptyMessage = "No items found",
-  className = "",
-  overscan = 5
-}: VirtualListProps<T>) {
-  const {
-    visibleItems,
-    totalHeight,
-    offsetY,
-    handleScroll,
-    visibleRange
-  } = useVirtualScrolling(items, itemHeight, containerHeight, overscan);
+export function VirtualList<T>({ items, renderItem, estimateSize, title }: VirtualListProps<T>) {
+    const parentRef = useRef<HTMLDivElement>(null);
 
-  if (loading) {
-    return (
-      <div className={`${className} space-y-2`}>
-        {Array.from({ length: Math.ceil(containerHeight / itemHeight) }).map((_, index) => (
-          <Skeleton key={index} className="h-16 w-full" />
-        ))}
-      </div>
-    );
-  }
+    const virtualizer = useVirtualizer({
+        count: items.length,
+        getScrollElement: () => parentRef.current,
+        estimateSize: estimateSize,
+        overscan: 5,
+    });
 
-  if (items.length === 0) {
-    return (
-      <div className={`${className} flex items-center justify-center h-full`}>
-        <p className="text-gray-500 text-center">{emptyMessage}</p>
-      </div>
-    );
-  }
-
-  return (
-    <div
-      className={`${className} overflow-auto`}
-      style={{ height: containerHeight }}
-      onScroll={handleScroll}
-    >
-      <div style={{ height: totalHeight, position: 'relative' }}>
-        <div style={{ transform: `translateY(${offsetY}px)` }}>
-          {visibleItems.map(({ item, index }) => (
-            <div
-              key={keyExtractor(item, index)}
-              style={{ height: itemHeight }}
-              className="flex items-center"
-            >
-              {renderItem(item, index)}
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-interface VirtualClientListProps {
-  clients: Array<{
-    id: number;
-    name: string;
-    company?: string;
-    status: string;
-    kpis?: Array<{ met: boolean; actual?: number }>;
-  }>;
-  onClientClick?: (clientId: number) => void;
-  loading?: boolean;
-}
-
-export function VirtualClientList({ clients, onClientClick, loading }: VirtualClientListProps) {
-  const renderClient = useCallback((client: any, index: number) => {
-    const healthScore = client.kpis 
-      ? (client.kpis.filter((kpi: any) => kpi.met).length / client.kpis.length) * 100 
-      : 100;
-    
-    const revenue = client.kpis?.reduce((sum: number, kpi: any) => {
-      return sum + (typeof kpi.actual === 'number' ? kpi.actual : 0);
-    }, 0) || 0;
+    const virtualItems = useMemo(() => virtualizer.getVirtualItems(), [virtualizer]);
 
     return (
-      <Card 
-        className="w-full cursor-pointer hover:shadow-md transition-shadow"
-        onClick={() => onClientClick?.(client.id)}
-      >
-        <CardContent className="p-4">
-          <div className="flex items-center justify-between">
-            <div className="flex-1">
-              <h3 className="font-semibold text-gray-900">{client.name}</h3>
-              <p className="text-sm text-gray-600">{client.company || 'Company not specified'}</p>
-            </div>
-            <div className="text-right">
-              <div className="text-lg font-bold text-blue-600">
-                ${revenue.toLocaleString()}
-              </div>
-              <div className={`text-sm font-medium ${
-                healthScore >= 80 ? 'text-green-600' : 
-                healthScore >= 60 ? 'text-yellow-600' : 'text-red-600'
-              }`}>
-                {healthScore.toFixed(1)}% Health
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+        <Card>
+            <CardHeader>
+                <CardTitle>{title}</CardTitle>
+            </CardHeader>
+            <CardContent>
+                <div
+                    ref={parentRef}
+                    style={{
+                        height: '400px',
+                        overflow: 'auto',
+                    }}
+                >
+                    <div
+                        style={{
+                            height: `${virtualizer.getTotalSize()}px`,
+                            width: '100%',
+                            position: 'relative',
+                        }}
+                    >
+                        {virtualItems.map((virtualItem) => (
+                            <div
+                                key={virtualItem.key}
+                                style={{
+                                    position: 'absolute',
+                                    top: 0,
+                                    left: 0,
+                                    width: '100%',
+                                    transform: `translateY(${virtualItem.start}px)`,
+                                }}
+                            >
+                                {renderItem(items[virtualItem.index])}
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </CardContent>
+        </Card>
     );
-  }, [onClientClick]);
-
-  const keyExtractor = useCallback((client: any) => client.id.toString(), []);
-
-  return (
-    <VirtualList
-      items={clients}
-      itemHeight={120}
-      containerHeight={600}
-      renderItem={renderClient}
-      keyExtractor={keyExtractor}
-      loading={loading}
-      emptyMessage="No clients found. Add your first client to get started."
-      className="space-y-2"
-      overscan={3}
-    />
-  );
 }

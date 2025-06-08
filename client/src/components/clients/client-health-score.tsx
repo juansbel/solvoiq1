@@ -67,7 +67,7 @@ export function ClientHealthScore({ client, className }: ClientHealthScoreProps)
         description: 'Regular check-ins and feedback loops'
       }
     ];
-  }, [client]);
+  }, []);
 
   const overallScore = useMemo(() => {
     return healthMetrics.reduce((acc, metric) => {

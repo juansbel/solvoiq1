@@ -1,9 +1,30 @@
-import { useState, useEffect } from "react";
-import { BrainCircuit, LayoutDashboard, Users, UserCheck, CheckSquare, Edit3, Send, Search, FileText, Bookmark, Settings, User, DollarSign, ExternalLink, Home, BarChart3, Brain, ChevronDown, ChevronRight, LogOut, Menu, X } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { useAuth } from "@/contexts/AuthContext";
-import { Button } from "@/components/ui/button";
-import { useMobile } from "@/hooks/use-mobile";
+import React from 'react';
+import { NavLink, useLocation } from 'wouter';
+import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import {
+    LayoutDashboard,
+    Users,
+    Briefcase,
+    FileText,
+    Settings,
+    Bell,
+    BarChart3,
+    Zap,
+    LifeBuoy,
+    LogOut,
+    BrainCircuit
+} from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { useMobile } from '@/hooks/use-mobile';
+import {
+    Accordion,
+    AccordionContent,
+    AccordionItem,
+    AccordionTrigger,
+} from "@/components/ui/accordion"
+import { useState } from "react";
+import { Brain, UserCheck, CheckSquare, Edit3, Send, Search, Bookmark, ExternalLink, ChevronDown, ChevronRight } from "lucide-react";
 
 interface SidebarProps {
   activeTab: string;
@@ -56,7 +77,7 @@ export function AppSidebar({ activeTab, onTabChange, isOpen = false, onToggle }:
         { id: "team", label: "Team Management", icon: UserCheck },
         { id: "projects", label: "Project Management", icon: CheckSquare },
         { id: "workflows", label: "Workflow Automation", icon: Brain },
-        { id: "commission", label: "Commission Tracking", icon: DollarSign },
+        { id: "commission", label: "Commission Tracking", icon: Briefcase },
         { id: "report", label: "Business Reports", icon: FileText },
       ]
     },

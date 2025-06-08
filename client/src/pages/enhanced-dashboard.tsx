@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import React, { useMemo, useEffect } from "react";
+import React, { useMemo, useEffect, useState } from "react";
 import type { Client, TeamMember, Task, Statistics } from "@/../../shared/schema";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -46,7 +46,7 @@ import { CrossPageInsights } from "@/components/shared/cross-page-insights";
 import { DataSyncIndicator } from "@/components/shared/data-sync-indicator";
 import { useDataIntegration } from "@/contexts/DataIntegrationContext";
 import { useRealTimeSync } from "@/hooks/use-real-time-sync";
-import { useState } from "react";
+import { usePerformanceOptimization } from '@/hooks/use-performance-optimization';
 
 interface QuickAction {
   id: string;
@@ -191,15 +191,15 @@ const REVENUE_TREND = [
   { month: "Apr", value: 225000, target: 230000 }
 ];
 
-export function Dashboard({ onTabChange }: { onTabChange?: (tab: string) => void }) {
+const EnhancedDashboard: React.FC = () => {
+  const { clients, teamMembers, tasks, clientActivity, isLoading, error, forceSync, lastSync } = useDataIntegration();
+  const { connectionState, latestData, sendMessage } = useRealTimeSync();
   const [showNotifications, setShowNotifications] = useState(false);
   const [showPredictiveAnalytics, setShowPredictiveAnalytics] = useState(false);
+  const { getClientHealth, getTeamEfficiency, getRevenueTrend, getTaskDistribution } = usePerformanceOptimization();
+
   const { isMobile, isTablet } = useMobile();
   
-  // Real-time data integration
-  const { consolidatedData, lastSync, isLoading: dataIntegrationLoading } = useDataIntegration();
-  const { forcSync } = useRealTimeSync();
-
   // Set page title
   useEffect(() => {
     document.title = "Dashboard - ClientHub AI";
@@ -232,7 +232,7 @@ export function Dashboard({ onTabChange }: { onTabChange?: (tab: string) => void
   const floatingNotifications = useFloatingNotifications();
 
   // Combined loading state
-  const combinedLoading = statsLoading || clientsLoading || tasksLoading || teamLoading || dataIntegrationLoading;
+  const combinedLoading = statsLoading || clientsLoading || tasksLoading || teamLoading || isLoading;
   const hasError = statsError || clientsError || tasksError || teamError;
 
   // Early return for loading states
@@ -412,8 +412,6 @@ export function Dashboard({ onTabChange }: { onTabChange?: (tab: string) => void
     }
   }, [stats, clients, tasks, dashboardMetrics, floatingNotifications, onTabChange]);
 
-
-
   const getAlertIcon = (type: string) => {
     switch (type) {
       case "churn_risk": return <AlertTriangle className="h-4 w-4 text-red-500" />;
@@ -432,6 +430,42 @@ export function Dashboard({ onTabChange }: { onTabChange?: (tab: string) => void
       default: return "bg-gray-100 text-gray-700 border-gray-200";
     }
   };
+
+  const teamEfficiencyData = getTeamEfficiency();
+  const revenueTrendData = getRevenueTrend();
+  const taskDistributionData = getTaskDistribution();
+
+  const memoizedClientHealth = useMemo(() => {
+    return (clientId: number) => getClientHealth(clientId);
+  }, [getClientHealth]);
+
+  const activeClients = clients.filter(c => c.status === 'Active');
+  const recentActivities = clientActivity.slice(0, 5);
+
+  useEffect(() => {
+    // Example of a side effect after data fetching
+    console.log("Dashboard data loaded:", { clients, teamMembers, tasks });
+  }, [clients, teamMembers, tasks]);
+
+  const TEAM_METRICS = [
+    { name: 'Active Projects', value: '12', change: '+5%', changeType: 'increase' },
+    { name: 'Avg. Task Completion', value: '3.5 days', change: '-0.2 days', changeType: 'decrease' },
+  ];
+
+  const REVENUE_TREND = [
+    { name: 'Jan', revenue: 4000 },
+    { name: 'Feb', revenue: 3000 },
+    { name: 'Mar', revenue: 5000 },
+    { name: 'Apr', revenue: 4500 },
+    { name: 'May', revenue: 6000 },
+    { name: 'Jun', revenue: 5500 },
+    { name: 'Jul', revenue: 6500 },
+    { name: 'Aug', revenue: 7000 },
+    { name: 'Sep', revenue: 6800 },
+    { name: 'Oct', revenue: 7200 },
+    { name: 'Nov', revenue: 7500 },
+    { name: 'Dec', revenue: 5200 },
+  ];
 
   return (
     <div className="flex-1 overflow-auto bg-gray-50 dark:bg-gray-900">
@@ -746,3 +780,5 @@ export function Dashboard({ onTabChange }: { onTabChange?: (tab: string) => void
     </div>
   );
 }
+
+export default EnhancedDashboard;

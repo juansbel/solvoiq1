@@ -1,8 +1,9 @@
-import { Copy } from "lucide-react";
+import { Copy, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { copyToClipboard } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { useState } from "react";
 
 interface TextareaWithCopyProps {
   value: string;
@@ -22,6 +23,8 @@ export function TextareaWithCopy({
   className
 }: TextareaWithCopyProps) {
   const { toast } = useToast();
+  const [isCopied, setIsCopied] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleCopy = async () => {
     try {
@@ -30,12 +33,12 @@ export function TextareaWithCopy({
         title: "Copied to clipboard",
         description: "Content has been copied to your clipboard."
       });
-    } catch (error) {
-      toast({
-        title: "Copy failed",
-        description: "Failed to copy content to clipboard.",
-        variant: "destructive"
-      });
+      setIsCopied(true);
+      setTimeout(() => setIsCopied(false), 2000);
+    } catch (copyError) {
+      console.error("Failed to copy:", copyError);
+      setError("Failed to copy text.");
+      setTimeout(() => setError(null), 3000);
     }
   };
 
@@ -56,8 +59,9 @@ export function TextareaWithCopy({
         className="absolute top-2 right-2 h-8 w-8 p-0"
         onClick={handleCopy}
       >
-        <Copy className="w-4 h-4" />
+        {isCopied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
       </Button>
+      {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
     </div>
   );
 }

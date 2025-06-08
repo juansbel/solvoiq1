@@ -9,7 +9,6 @@ import { DataIntegrationProvider } from "@/contexts/DataIntegrationContext";
 import { RealTimeNotifications } from "@/components/shared/real-time-notification";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { ErrorBoundary as UIErrorBoundary } from "@/components/ui/error-boundary";
-import { DashboardSkeleton } from "@/components/ui/loading-skeleton";
 import { MobileHeader } from "@/components/ui/mobile-header";
 import { useMobile } from "@/hooks/use-mobile";
 
@@ -61,8 +60,6 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
   return <>{children}</>;
 }
-
-
 
 function AppContent() {
   const [location, setLocation] = useLocation();

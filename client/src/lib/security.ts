@@ -33,7 +33,7 @@ export function escapeHtml(unsafe: string): string {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
+    .replace(/'/g, "&#39;");
 }
 
 export function generateCSPNonce(): string {
@@ -68,3 +68,36 @@ export function rateLimiter(key: string, limit: number, windowMs: number): boole
   
   return true;
 }
+
+export const sanitizeConfig = {
+    ALLOWED_TAGS: ['b', 'i', 'em', 'strong', 'a', 'p', 'h1', 'h2', 'h3', 'ul', 'ol', 'li', 'br', 'div'],
+    ALLOWED_ATTR: ['href']
+};
+
+export function validatePassword(password: string): boolean {
+    const minLength = 8;
+    const hasUpperCase = /[A-Z]/.test(password);
+    const hasLowerCase = /[a-z]/.test(password);
+    const hasNumbers = /\d/.test(password);
+    const hasSpecialChar = /[!@#$%^&*()_+-=[]{};':"\\|,.<>/?]/.test(password);
+
+    return (
+        password.length >= minLength &&
+        hasUpperCase &&
+        hasLowerCase &&
+        hasNumbers &&
+        hasSpecialChar
+    );
+}
+
+export const isValidUrl = (url: string) => {
+    try {
+        new URL(url);
+        // Basic regex to prevent obviously malicious strings.
+        // This is not a substitute for proper server-side validation and sanitization.
+        const harmfulChars = /['"<>\(\)]/;
+        return !harmfulChars.test(url);
+    } catch (_) {
+        return false;
+    }
+};

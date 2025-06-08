@@ -13,10 +13,13 @@ export default defineConfig({
   },
   root: path.resolve(import.meta.dirname, "client"),
   build: {
-    outDir: "dist/client",
+    outDir: "../dist/client",
     emptyOutDir: true,
     sourcemap: true,
     rollupOptions: {
+      input: {
+        main: path.resolve(__dirname, 'client/index.html')
+      },
       output: {
         manualChunks: {
           vendor: ['react', 'react-dom'],

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -6,14 +6,24 @@ import { useDataIntegration } from '@/contexts/DataIntegrationContext';
 import { 
   TrendingUp, 
   Users, 
-  Clock, 
   AlertTriangle, 
   CheckCircle, 
   BookOpen,
   ArrowRight,
-  Activity
+  Activity,
+  Lightbulb,
+  BarChart,
+  FileText
 } from 'lucide-react';
 import { useLocation } from 'wouter';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
 
 interface CrossPageInsightsProps {
   contextType: 'client' | 'team-member' | 'task' | 'general';

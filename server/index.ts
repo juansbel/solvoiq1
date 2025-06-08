@@ -1,16 +1,17 @@
 import express from "express";
-import { Server } from "http";
+import { createServer } from "http";
+import * as functions from 'firebase-functions';
+import cors from "cors";
+
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic } from "./vite";
 import { DrizzleStorage } from "./db";
 import { MemStorage } from "./storage";
-import { wsManager, startPerformanceMonitoring } from "./websocket";
+import { initializeWebSocketManager, startPerformanceMonitoring, wsManager } from "./websocket";
 import { config } from "./config";
 import logger from "./logger";
 import { middleware } from "./middleware";
 import healthRouter from "./health";
-import cors from "cors";
-import * as functions from 'firebase-functions';
 
 // Initialize storage with database
 export let storage: DrizzleStorage | MemStorage;
@@ -25,7 +26,6 @@ if (config.database.url) {
 }
 
 const app = express();
-let server: Server;
 
 // Configure CORS
 app.use(cors({
@@ -45,84 +45,54 @@ app.use(middleware.performance);
 app.use('/health', healthRouter);
 
 // Register API routes
-const api = functions.https.onRequest(async (req, res) => {
-  if (!server) {
-    server = new Server();
-    const wsManager = new WebSocketManager(server);
-    
-    // Setup middleware
-    middleware(app);
-    
-    // Setup routes
-    registerRoutes(app);
-    
-    // Setup Vite in development
-    if (process.env.NODE_ENV === 'development') {
-      const vite = await createDevServer();
-      app.use(vite.middlewares);
-    }
-    
-    // Attach Express to the server
-    server.on('request', app);
-  }
-  
-  // Handle the request
-  app(req, res);
-});
+registerRoutes(app);
 
-// Only start the server directly if not running in Firebase Functions
-if (process.env.NODE_ENV !== 'production' || !process.env.FUNCTION_TARGET) {
+app.use(middleware.error);
+
+export const api = functions.https.onRequest(app);
+
+if (process.env.NODE_ENV !== 'production') {
+  const server = createServer(app);
   const PORT = process.env.PORT || 3001;
-  server = new Server();
-  const wsManager = new WebSocketManager(server);
   
-  middleware(app);
-  registerRoutes(app);
-  
+  initializeWebSocketManager(server);
+
+  const startServer = () => {
+    server.listen(PORT, () => {
+      logger.info(`Server running on http://localhost:${PORT}`);
+      startPerformanceMonitoring();
+    });
+  };
+
   if (process.env.NODE_ENV === 'development') {
-    createDevServer().then(vite => {
-      app.use(vite.middlewares);
-      server.listen(PORT, () => {
-        logger.info(`Server running on port ${PORT}`);
-      });
+    setupVite(app).then(startServer).catch(err => {
+        logger.error("Failed to setup Vite", err);
+        process.exit(1);
     });
   } else {
     serveStatic(app);
-    // Add catch-all route for client-side routing
-    app.get("*", (req, res) => {
-      res.sendFile("index.html", { root: "dist/public" });
-    });
-    server.listen(PORT, () => {
-      logger.info(`Server running on port ${PORT}`);
-    });
+    startServer();
   }
+
+  const shutdown = async () => {
+    logger.info('Shutting down server...');
+    
+    // Close database connection if using DrizzleStorage
+    if (storage instanceof DrizzleStorage) {
+      await storage.shutdown();
+    }
+    
+    // Close WebSocket connections
+    wsManager.close();
+    
+    // Close HTTP server
+    server.close(() => {
+      logger.info('Server closed');
+      process.exit(0);
+    });
+  };
+
+  // Handle shutdown signals
+  process.on('SIGTERM', shutdown);
+  process.on('SIGINT', shutdown);
 }
-
-// Error handling middleware (should be last)
-app.use(middleware.error);
-
-// Graceful shutdown
-const shutdown = async () => {
-  logger.info('Shutting down server...');
-  
-  // Close database connection if using DrizzleStorage
-  if (storage instanceof DrizzleStorage) {
-    await storage.shutdown();
-  }
-  
-  // Close WebSocket connections
-  wsManager.close();
-  
-  // Close HTTP server
-  server.close(() => {
-    logger.info('Server closed');
-    process.exit(0);
-  });
-};
-
-// Handle shutdown signals
-process.on('SIGTERM', shutdown);
-process.on('SIGINT', shutdown);
-
-// Export the Express app for Vercel
-export default app;

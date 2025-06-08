@@ -1,207 +1,83 @@
-import { useState, useEffect } from "react";
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { 
-  AlertTriangle, 
-  CheckCircle, 
-  Info, 
-  X,
-  DollarSign,
-  Users,
-  Clock,
-  Target
-} from "lucide-react";
-import { cn } from "@/lib/utils";
+import React, { useEffect } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { CheckCircle, AlertTriangle, X, Info } from 'lucide-react';
+import { useToast, ToastMessage } from '@/contexts/ToastContext';
+import { cn } from '@/lib/utils';
 
-interface ToastNotification {
-  id: string;
-  type: "success" | "warning" | "error" | "info" | "revenue" | "client";
-  title: string;
-  message: string;
-  duration?: number;
-  actionLabel?: string;
-  onAction?: () => void;
-}
+const ICONS: Record<ToastMessage['type'], React.ElementType> = {
+    success: CheckCircle,
+    error: AlertTriangle,
+    warning: AlertTriangle,
+    info: Info,
+};
 
-interface ToastNotificationsProps {
-  notifications: ToastNotification[];
-  onDismiss: (id: string) => void;
-}
+const Toast: React.FC<{ toast: ToastMessage, onDismiss: (id: string) => void }> = ({ toast, onDismiss }) => {
+    const Icon = ICONS[toast.type];
 
-const TOAST_DURATION = 5000; // 5 seconds
+    useEffect(() => {
+        if (toast.duration) {
+            const timer = setTimeout(() => {
+                onDismiss(toast.id);
+            }, toast.duration);
+            return () => clearTimeout(timer);
+        }
+    }, [toast, onDismiss]);
 
-export function ToastNotifications({ notifications, onDismiss }: ToastNotificationsProps) {
-  const [visibleNotifications, setVisibleNotifications] = useState<ToastNotification[]>([]);
-
-  useEffect(() => {
-    setVisibleNotifications(notifications);
-
-    // Auto-dismiss notifications after duration
-    notifications.forEach(notification => {
-      const duration = notification.duration || TOAST_DURATION;
-      setTimeout(() => {
-        onDismiss(notification.id);
-      }, duration);
-    });
-  }, [notifications, onDismiss]);
-
-  const getToastIcon = (type: string) => {
-    switch (type) {
-      case "success":
-        return <CheckCircle className="h-5 w-5 text-green-600" />;
-      case "warning":
-        return <AlertTriangle className="h-5 w-5 text-orange-600" />;
-      case "error":
-        return <AlertTriangle className="h-5 w-5 text-red-600" />;
-      case "revenue":
-        return <DollarSign className="h-5 w-5 text-blue-600" />;
-      case "client":
-        return <Users className="h-5 w-5 text-purple-600" />;
-      default:
-        return <Info className="h-5 w-5 text-blue-600" />;
-    }
-  };
-
-  const getToastStyles = (type: string) => {
-    switch (type) {
-      case "success":
-        return "border-green-200 bg-green-50";
-      case "warning":
-        return "border-orange-200 bg-orange-50";
-      case "error":
-        return "border-red-200 bg-red-50";
-      case "revenue":
-        return "border-blue-200 bg-blue-50";
-      case "client":
-        return "border-purple-200 bg-purple-50";
-      default:
-        return "border-blue-200 bg-blue-50";
-    }
-  };
-
-  if (visibleNotifications.length === 0) return null;
-
-  return (
-    <div className="fixed top-4 right-4 z-50 space-y-2 max-w-sm">
-      {visibleNotifications.map((notification) => (
-        <Card
-          key={notification.id}
-          className={cn(
-            "p-4 shadow-lg animate-in slide-in-from-right-5 duration-300",
-            getToastStyles(notification.type)
-          )}
+    return (
+        <motion.div
+            layout
+            initial={{ opacity: 0, y: 50, scale: 0.3 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.5, transition: { duration: 0.2 } }}
+            className={cn(
+                "pointer-events-auto w-full max-w-sm overflow-hidden rounded-lg bg-white shadow-lg ring-1 ring-black ring-opacity-5",
+                {
+                    'bg-green-50 text-green-800': toast.type === 'success',
+                    'bg-red-50 text-red-800': toast.type === 'error',
+                    'bg-yellow-50 text-yellow-800': toast.type === 'warning',
+                    'bg-blue-50 text-blue-800': toast.type === 'info',
+                }
+            )}
         >
-          <div className="flex items-start gap-3">
-            <div className="mt-0.5">
-              {getToastIcon(notification.type)}
+            <div className="p-4">
+                <div className="flex items-start">
+                    <div className="flex-shrink-0">
+                        <Icon className="h-6 w-6" aria-hidden="true" />
+                    </div>
+                    <div className="ml-3 w-0 flex-1 pt-0.5">
+                        <p className="text-sm font-medium">{toast.title}</p>
+                        <p className="mt-1 text-sm">{toast.message}</p>
+                    </div>
+                    <div className="ml-4 flex flex-shrink-0">
+                        <button
+                            onClick={() => onDismiss(toast.id)}
+                            className="inline-flex rounded-md bg-white text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+                        >
+                            <span className="sr-only">Close</span>
+                            <X className="h-5 w-5" aria-hidden="true" />
+                        </button>
+                    </div>
+                </div>
             </div>
-            <div className="flex-1 min-w-0">
-              <h4 className="text-sm font-semibold text-slate-900 mb-1">
-                {notification.title}
-              </h4>
-              <p className="text-sm text-slate-700 mb-3">
-                {notification.message}
-              </p>
-              {notification.actionLabel && notification.onAction && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={notification.onAction}
-                  className="mr-2"
-                >
-                  {notification.actionLabel}
-                </Button>
-              )}
+        </motion.div>
+    );
+};
+
+export const ToastNotifications: React.FC = () => {
+    const { toasts, removeToast } = useToast();
+
+    return (
+        <div
+            aria-live="assertive"
+            className="pointer-events-none fixed inset-0 flex items-end px-4 py-6 sm:items-start sm:p-6 z-50"
+        >
+            <div className="flex w-full flex-col items-center space-y-4 sm:items-end">
+                <AnimatePresence>
+                    {toasts.map((toast) => (
+                        <Toast key={toast.id} toast={toast} onDismiss={removeToast} />
+                    ))}
+                </AnimatePresence>
             </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => onDismiss(notification.id)}
-              className="h-6 w-6 p-0 hover:bg-slate-200"
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
-        </Card>
-      ))}
-    </div>
-  );
-}
-
-// Hook for managing toast notifications
-export function useToastNotifications() {
-  const [notifications, setNotifications] = useState<ToastNotification[]>([]);
-
-  const addNotification = (notification: Omit<ToastNotification, 'id'>) => {
-    const id = Date.now().toString();
-    const newNotification = { ...notification, id };
-    setNotifications(prev => [...prev, newNotification]);
-    return id;
-  };
-
-  const dismissNotification = (id: string) => {
-    setNotifications(prev => prev.filter(n => n.id !== id));
-  };
-
-  const dismissAll = () => {
-    setNotifications([]);
-  };
-
-  // Predefined notification types for common business events
-  const showSuccess = (title: string, message: string, options?: Partial<ToastNotification>) => {
-    return addNotification({ type: "success", title, message, ...options });
-  };
-
-  const showWarning = (title: string, message: string, options?: Partial<ToastNotification>) => {
-    return addNotification({ type: "warning", title, message, ...options });
-  };
-
-  const showError = (title: string, message: string, options?: Partial<ToastNotification>) => {
-    return addNotification({ type: "error", title, message, ...options });
-  };
-
-  const showRevenue = (title: string, message: string, options?: Partial<ToastNotification>) => {
-    return addNotification({ type: "revenue", title, message, ...options });
-  };
-
-  const showClient = (title: string, message: string, options?: Partial<ToastNotification>) => {
-    return addNotification({ type: "client", title, message, ...options });
-  };
-
-  const showChurnAlert = (clientName: string, onNavigate?: () => void) => {
-    return addNotification({
-      type: "warning",
-      title: "Client Churn Risk",
-      message: `${clientName} shows decreased engagement patterns`,
-      actionLabel: "View Details",
-      onAction: onNavigate,
-      duration: 8000 // Longer duration for important alerts
-    });
-  };
-
-  const showOpportunity = (clientName: string, opportunity: string, onNavigate?: () => void) => {
-    return addNotification({
-      type: "success",
-      title: "New Opportunity",
-      message: `${clientName}: ${opportunity}`,
-      actionLabel: "View Analytics",
-      onAction: onNavigate,
-      duration: 10000
-    });
-  };
-
-  return {
-    notifications,
-    addNotification,
-    dismissNotification,
-    dismissAll,
-    showSuccess,
-    showWarning,
-    showError,
-    showRevenue,
-    showClient,
-    showChurnAlert,
-    showOpportunity
-  };
-}
+        </div>
+    );
+};
