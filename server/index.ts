@@ -1,5 +1,5 @@
 import express from "express";
-import { createServer } from "http";
+import { Server } from "http";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic } from "./vite";
 import { DrizzleStorage } from "./db";
@@ -10,6 +10,7 @@ import logger from "./logger";
 import { middleware } from "./middleware";
 import healthRouter from "./health";
 import cors from "cors";
+import * as functions from 'firebase-functions';
 
 // Initialize storage with database
 export let storage: DrizzleStorage | MemStorage;
@@ -24,6 +25,7 @@ if (config.database.url) {
 }
 
 const app = express();
+let server: Server;
 
 // Configure CORS
 app.use(cors({
@@ -43,38 +45,61 @@ app.use(middleware.performance);
 app.use('/health', healthRouter);
 
 // Register API routes
-const server = createServer(app);
-registerRoutes(app);
+const api = functions.https.onRequest(async (req, res) => {
+  if (!server) {
+    server = new Server();
+    const wsManager = new WebSocketManager(server);
+    
+    // Setup middleware
+    middleware(app);
+    
+    // Setup routes
+    registerRoutes(app);
+    
+    // Setup Vite in development
+    if (process.env.NODE_ENV === 'development') {
+      const vite = await createDevServer();
+      app.use(vite.middlewares);
+    }
+    
+    // Attach Express to the server
+    server.on('request', app);
+  }
+  
+  // Handle the request
+  app(req, res);
+});
 
-// Initialize WebSocket server only in development
-if (config.env === "development") {
-  wsManager.initialize(server);
-  startPerformanceMonitoring();
-}
-
-// Setup development or production environment
-if (config.env === "development") {
-  setupVite(app, server);
-} else {
-  serveStatic(app);
-  // Add catch-all route for client-side routing
-  app.get("*", (req, res) => {
-    res.sendFile("index.html", { root: "dist/public" });
-  });
+// Only start the server directly if not running in Firebase Functions
+if (process.env.NODE_ENV !== 'production' || !process.env.FUNCTION_TARGET) {
+  const PORT = process.env.PORT || 3001;
+  server = new Server();
+  const wsManager = new WebSocketManager(server);
+  
+  middleware(app);
+  registerRoutes(app);
+  
+  if (process.env.NODE_ENV === 'development') {
+    createDevServer().then(vite => {
+      app.use(vite.middlewares);
+      server.listen(PORT, () => {
+        logger.info(`Server running on port ${PORT}`);
+      });
+    });
+  } else {
+    serveStatic(app);
+    // Add catch-all route for client-side routing
+    app.get("*", (req, res) => {
+      res.sendFile("index.html", { root: "dist/public" });
+    });
+    server.listen(PORT, () => {
+      logger.info(`Server running on port ${PORT}`);
+    });
+  }
 }
 
 // Error handling middleware (should be last)
 app.use(middleware.error);
-
-// Start server only in development
-if (config.env === "development") {
-  server.listen(config.port, "127.0.0.1", () => {
-    logger.info(`Server running on port ${config.port}`);
-  });
-}
-
-// Export the Express app for Vercel
-export default app;
 
 // Graceful shutdown
 const shutdown = async () => {
@@ -98,3 +123,6 @@ const shutdown = async () => {
 // Handle shutdown signals
 process.on('SIGTERM', shutdown);
 process.on('SIGINT', shutdown);
+
+// Export the Express app for Vercel
+export default app;

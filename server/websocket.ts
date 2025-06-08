@@ -1,5 +1,6 @@
-import { WebSocketServer, WebSocket } from 'ws';
+import { WebSocket, WebSocketServer } from 'ws';
 import { Server } from 'http';
+import { nanoid } from 'nanoid';
 import { storage } from './index';
 import { log } from './vite';
 
@@ -9,69 +10,77 @@ export interface WebSocketMessage {
   timestamp: number;
 }
 
-interface PerformanceMetrics {
-  activeConnections: number;
-  messagesSent: number;
-  messagesReceived: number;
-  averageLatency: number;
+export interface PerformanceMetrics {
+  cpu: number;
+  memory: number;
+  uptime: number;
 }
 
 export class WebSocketManager {
   private wss: WebSocketServer;
-  private clients: Set<WebSocket> = new Set();
-  private metrics: PerformanceMetrics = {
-    activeConnections: 0,
-    messagesSent: 0,
-    messagesReceived: 0,
-    averageLatency: 0
-  };
+  private clients: Map<string, WebSocket>;
 
   constructor(server: Server) {
     this.wss = new WebSocketServer({ server });
+    this.clients = new Map();
     this.setupWebSocketServer();
   }
 
   private setupWebSocketServer() {
-    this.wss.on("connection", (ws: WebSocket) => {
-      this.clients.add(ws);
-      this.metrics.activeConnections = this.clients.size;
+    this.wss.on('connection', (ws: WebSocket) => {
+      const clientId = nanoid();
+      this.clients.set(clientId, ws);
 
-      ws.on("message", (message: string) => {
-        this.metrics.messagesReceived++;
+      ws.on('message', (message: string) => {
         try {
           const data = JSON.parse(message);
-          // Handle incoming messages
+          this.handleMessage(clientId, data);
         } catch (error) {
-          console.error("Error parsing WebSocket message:", error);
+          console.error('Error parsing WebSocket message:', error);
         }
       });
 
-      ws.on("close", () => {
-        this.clients.delete(ws);
-        this.metrics.activeConnections = this.clients.size;
+      ws.on('close', () => {
+        this.clients.delete(clientId);
       });
     });
   }
 
-  private broadcastPerformanceMetrics(metrics: PerformanceMetrics) {
-    const message: WebSocketMessage = {
-      type: 'performance',
-      data: metrics,
-      timestamp: Date.now()
-    };
-    this.broadcast(message);
+  private handleMessage(clientId: string, message: WebSocketMessage) {
+    switch (message.type) {
+      case 'ping':
+        this.sendToClient(clientId, {
+          type: 'pong',
+          data: { timestamp: Date.now() },
+          timestamp: Date.now()
+        });
+        break;
+      default:
+        console.log('Unknown message type:', message.type);
+    }
   }
 
-  private broadcast(message: WebSocketMessage) {
-    this.clients.forEach(client => {
+  private sendToClient(clientId: string, message: WebSocketMessage) {
+    const client = this.clients.get(clientId);
+    if (client && client.readyState === WebSocket.OPEN) {
+      client.send(JSON.stringify(message));
+    }
+  }
+
+  public broadcast(message: WebSocketMessage) {
+    this.clients.forEach((client) => {
       if (client.readyState === WebSocket.OPEN) {
         client.send(JSON.stringify(message));
       }
     });
   }
 
-  public getCurrentMetrics(): PerformanceMetrics {
-    return { ...this.metrics };
+  public sendPerformanceMetrics(metrics: PerformanceMetrics) {
+    this.broadcast({
+      type: 'performance',
+      data: metrics,
+      timestamp: Date.now()
+    });
   }
 
   // Notify clients about task updates
