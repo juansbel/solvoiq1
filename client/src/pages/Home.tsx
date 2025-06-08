@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
-import { Send, PlusCircle, CheckCircle, TrendingUp, BrainCircuit, Copy, Trash2, ArrowLeft, Edit2, Plus, User } from "lucide-react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { Send, PlusCircle, CheckCircle, TrendingUp, BrainCircuit, Copy, Trash2, ArrowLeft, Edit2, Plus, User, Search, FileText } from "lucide-react";
 import { Sidebar } from "@/components/Sidebar";
 import { StatCard } from "@/components/StatCard";
 import { TaskItem } from "@/components/TaskItem";
@@ -15,7 +17,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { useToast } from "@/hooks/use-toast";
+import { useToast } from "@/components/ui/use-toast";
 import { callGeminiAPI } from "@/lib/gemini";
 import { debounce, commonSectionClass, commonHeaderClass, commonSubHeaderClass, copyToClipboard } from "@/lib/utils";
 import {
@@ -34,7 +36,7 @@ import type {
   TeamMember, 
   Task, 
   EmailTemplate, 
-  ClientActivityLog, 
+  ClientActivity, 
   ClientMeeting, 
   ClientFollowup,
   Stats 
@@ -45,14 +47,25 @@ export default function Home() {
   
   // State
   const [currentTab, setCurrentTab] = useState("dashboard");
-  const [clients, setClients] = useState<Client[]>(SAMPLE_CLIENTS);
-  const [teamMembers, setTeamMembers] = useState<TeamMember[]>(SAMPLE_TEAM_MEMBERS);
-  const [tasks, setTasks] = useState<Task[]>(SAMPLE_TASKS);
-  const [emailTemplates, setEmailTemplates] = useState<EmailTemplate[]>(SAMPLE_EMAIL_TEMPLATES);
-  const [clientActivityLogs, setClientActivityLogs] = useState(SAMPLE_CLIENT_ACTIVITY_LOGS);
-  const [clientMeetings, setClientMeetings] = useState(SAMPLE_CLIENT_MEETINGS);
-  const [clientFollowups, setClientFollowups] = useState(SAMPLE_CLIENT_FOLLOWUPS);
-  const [stats, setStats] = useState<Stats>(SAMPLE_STATS);
+  const [clients, setClients] = useState<Client[]>([]);
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [emailTemplates, setEmailTemplates] = useState<EmailTemplate[]>([]);
+  const [clientActivityLogs, setClientActivityLogs] = useState<ClientActivity[]>([]);
+  const [clientMeetings, setClientMeetings] = useState<ClientMeeting[]>([]);
+  const [clientFollowups, setClientFollowups] = useState<ClientFollowup[]>([]);
+  const [stats, setStats] = useState<Stats>({
+    totalClients: 0,
+    totalTasks: 0,
+    tasksCompleted: 0,
+    tasksPending: 0,
+    tasksCreated: 0,
+    tasksUpdated: 0,
+    tasksDeleted: 0,
+    averageTaskCompletionTime: 0,
+    clientSatisfactionScore: 0,
+    teamProductivityScore: 0
+  });
   const [aiContext, setAiContext] = useState(SAMPLE_AI_CONTEXT.content);
 
   // Current selections
@@ -60,8 +73,25 @@ export default function Home() {
   const [viewingClientDetail, setViewingClientDetail] = useState(false);
 
   // Form states
-  const [newClient, setNewClient] = useState({ name: "", company: "", email: "", phone: "", notes: "" });
-  const [newTeamMember, setNewTeamMember] = useState({ name: "", email: "", role: "" });
+  const [newClient, setNewClient] = useState({
+    name: "",
+    company: "",
+    email: "",
+    phone: null,
+    notes: null,
+    assignedTeamMembers: []
+  });
+  const [newTeamMember, setNewTeamMember] = useState({
+    name: "",
+    email: "",
+    role: "",
+    position: null,
+    location: null,
+    teamMemberId: null,
+    skills: [],
+    incapacidades: [],
+    oneOnOneSessions: []
+  });
   const [editingClient, setEditingClient] = useState<Client | null>(null);
   const [editClientData, setEditClientData] = useState<Partial<Client>>({});
 
@@ -170,7 +200,7 @@ export default function Home() {
     };
 
     setClients(prev => [...prev, client]);
-    setNewClient({ name: "", company: "", email: "", phone: "", notes: "" });
+    setNewClient({ name: "", company: "", email: "", phone: null, notes: null, assignedTeamMembers: [] });
     showSuccessMessage("Client added successfully! (Sample Data Mode)");
   };
 
@@ -221,7 +251,7 @@ export default function Home() {
     };
 
     setTeamMembers(prev => [...prev, teamMember]);
-    setNewTeamMember({ name: "", email: "", role: "" });
+    setNewTeamMember({ name: "", email: "", role: "", position: null, location: null, teamMemberId: null, skills: [], incapacidades: [], oneOnOneSessions: [] });
     showSuccessMessage("Team member added successfully! (Sample Data Mode)");
   };
 
@@ -530,7 +560,7 @@ export default function Home() {
     e.preventDefault();
     if (!selectedClient || !newActivityLog.trim()) return;
 
-    const log: ClientActivityLog = {
+    const log: ClientActivity = {
       id: Date.now(),
       clientId: selectedClient.id,
       entry: newActivityLog,
@@ -773,8 +803,8 @@ export default function Home() {
                 <Input
                   id="client-phone"
                   type="tel"
-                  value={newClient.phone}
-                  onChange={(e) => setNewClient(prev => ({ ...prev, phone: e.target.value }))}
+                  value={newClient.phone || ""}
+                  onChange={(e) => setNewClient(prev => ({ ...prev, phone: e.target.value as any }))}
                   placeholder="+1 (555) 123-4567"
                 />
               </div>
@@ -782,8 +812,8 @@ export default function Home() {
                 <Label htmlFor="client-notes">Notes</Label>
                 <Textarea
                   id="client-notes"
-                  value={newClient.notes}
-                  onChange={(e) => setNewClient(prev => ({ ...prev, notes: e.target.value }))}
+                  value={newClient.notes || ""}
+                  onChange={(e) => setNewClient(prev => ({ ...prev, notes: e.target.value as any }))}
                   placeholder="Additional notes about the client"
                   rows={3}
                 />
@@ -1755,7 +1785,7 @@ export default function Home() {
                   <Input
                     id="edit-phone"
                     value={editClientData.phone || ""}
-                    onChange={(e) => setEditClientData(prev => ({ ...prev, phone: e.target.value }))}
+                    onChange={(e) => setEditClientData(prev => ({ ...prev, phone: e.target.value as any }))}
                   />
                 </div>
               </div>
@@ -1764,7 +1794,7 @@ export default function Home() {
                 <Textarea
                   id="edit-notes"
                   value={editClientData.notes || ""}
-                  onChange={(e) => setEditClientData(prev => ({ ...prev, notes: e.target.value }))}
+                  onChange={(e) => setEditClientData(prev => ({ ...prev, notes: e.target.value as any }))}
                   rows={3}
                 />
               </div>

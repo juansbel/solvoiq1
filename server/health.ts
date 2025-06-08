@@ -1,9 +1,11 @@
-import express from 'express';
-import { storage } from './index';
+import { Router } from "express";
+import { IStorage } from "./storage";
+import { MemStorage } from "./storage";
+import { DrizzleStorage } from "./db";
 import logger from './logger';
 import { getCacheStats } from './cache';
 
-const router = express.Router();
+const router = Router();
 
 // Basic health check
 router.get('/', (req, res) => {
@@ -66,6 +68,41 @@ async function checkDatabase() {
       message: error instanceof Error ? error.message : 'Unknown error',
     };
   }
+}
+
+export function setupHealthCheck(storage: IStorage) {
+  router.get("/health", async (req, res) => {
+    try {
+      const health = {
+        status: "ok",
+        timestamp: new Date().toISOString(),
+        services: {
+          database: "ok",
+          storage: "ok"
+        }
+      };
+
+      // Check database connection if using DrizzleStorage
+      if (storage instanceof DrizzleStorage) {
+        try {
+          await storage.checkConnection();
+        } catch (error) {
+          health.services.database = "error";
+          health.status = "error";
+        }
+      }
+
+      res.json(health);
+    } catch (error) {
+      res.status(500).json({
+        status: "error",
+        timestamp: new Date().toISOString(),
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  return router;
 }
 
 export default router; 

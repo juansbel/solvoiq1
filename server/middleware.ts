@@ -12,12 +12,12 @@ const corsOptions = {
   origin: [
     "http://localhost:5000",
     "http://127.0.0.1:5000",
-    "https://*.vercel.app", // Allow Vercel deployments
-    process.env.FRONTEND_URL // Allow custom frontend URL
+    /^https:\/\/.*\.vercel\.app$/,
+    process.env.FRONTEND_URL
   ].filter(Boolean),
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+  credentials: true
 };
 
 // Rate limiting

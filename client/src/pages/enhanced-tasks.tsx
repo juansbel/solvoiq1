@@ -60,11 +60,13 @@ export function EnhancedTasks() {
       status: "pending",
       priority: "medium",
       category: "general",
-      estimatedMinutes: 60,
+      estimatedMinutes: 30,
       timeSpent: 0,
-      assignedTo: "",
+      isAiGenerated: false,
+      assignedTo: null,
       tags: [],
-      isAiGenerated: false
+      dueDate: null,
+      completedAt: null
     },
   });
 

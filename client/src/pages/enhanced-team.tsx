@@ -43,6 +43,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { TeamMember, Task, Client, InsertTeamMember } from "@shared/schema";
 import { insertTeamMemberSchema } from "@shared/schema";
+import { Controller } from "react-hook-form";
 
 export default function EnhancedTeam() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -65,9 +66,9 @@ export default function EnhancedTeam() {
       name: "",
       email: "",
       role: "",
-      position: "",
-      location: "",
-      teamMemberId: "",
+      position: null,
+      location: null,
+      teamMemberId: null,
       skills: [],
       incapacidades: [],
       oneOnOneSessions: []
@@ -506,14 +507,18 @@ export default function EnhancedTeam() {
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
+                  <Controller
                     name="name"
+                    control={form.control}
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Full Name</FormLabel>
                         <FormControl>
-                          <Input placeholder="John Smith" {...field} />
+                          <Input
+                            {...field}
+                            placeholder="Name"
+                            required
+                          />
                         </FormControl>
                       </FormItem>
                     )}

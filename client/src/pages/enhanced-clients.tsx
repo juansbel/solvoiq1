@@ -62,18 +62,14 @@ export default function EnhancedClients() {
   }, []);
 
   const form = useForm<InsertClient>({
-    resolver: zodResolver(insertClientSchema.extend({
-      name: insertClientSchema.shape.name.min(2, "Name must be at least 2 characters"),
-      company: insertClientSchema.shape.company.min(2, "Company must be at least 2 characters"),
-      email: insertClientSchema.shape.email.email("Please enter a valid email address"),
-    })),
+    resolver: zodResolver(insertClientSchema),
     defaultValues: {
       userId: "1",
       name: "",
       company: "",
       email: "",
-      phone: "",
-      notes: "",
+      phone: null,
+      notes: null,
       assignedTeamMembers: [],
       kpis: []
     },

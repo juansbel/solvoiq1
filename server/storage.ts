@@ -7,6 +7,7 @@ import type {
   KnowledgeRevision, InsertKnowledgeRevision, KnowledgeBookmark, InsertKnowledgeBookmark,
   KnowledgeAnalytics, InsertKnowledgeAnalytics
 } from "../shared/schema";
+import { IStorage } from "./interfaces";
 
 export interface IStorage {
   // User management
@@ -83,47 +84,23 @@ export interface IStorage {
 
 export class MemStorage implements IStorage {
   private users: Map<number, User>;
-  private clients: Map<number, Client>;
-  private teamMembers: Map<number, TeamMember>;
-  private tasks: Map<number, Task>;
-  private emailTemplates: Map<number, EmailTemplate>;
-  private clientActivities: Map<number, ClientActivity[]>;
-  private statistics: Statistics;
-  private aiContext: AiContext | undefined;
-  private knowledgeCategories: Map<number, KnowledgeCategory>;
-  private knowledgeArticles: Map<number, KnowledgeArticle>;
-  private knowledgeComments: Map<number, KnowledgeComment[]>;
-  private knowledgeRevisions: Map<number, KnowledgeRevision[]>;
-  private knowledgeBookmarks: Map<string, KnowledgeBookmark[]>;
-  private knowledgeAnalytics: KnowledgeAnalytics[];
+  private clients: Client[] = [];
+  private teamMembers: TeamMember[] = [];
+  private tasks: Task[] = [];
+  private emailTemplates: EmailTemplate[] = [];
+  private clientActivities: ClientActivity[] = [];
+  private clientMeetings: ClientMeeting[] = [];
+  private clientFollowups: ClientFollowup[] = [];
+  private knowledgeArticles: KnowledgeArticle[] = [];
+  private knowledgeCategories: KnowledgeCategory[] = [];
+  private knowledgeComments: Map<number, KnowledgeComment[]> = new Map();
+  private knowledgeRevisions: KnowledgeRevision[] = [];
+  private knowledgeBookmarks: KnowledgeBookmark[] = [];
+  private knowledgeAnalytics: KnowledgeAnalytics[] = [];
   private currentId: number;
 
   constructor() {
     this.users = new Map();
-    this.clients = new Map();
-    this.teamMembers = new Map();
-    this.tasks = new Map();
-    this.emailTemplates = new Map();
-    this.clientActivities = new Map();
-    this.statistics = {
-      id: 1,
-      userId: "1",
-      communicationsSent: 0,
-      tasksCreated: 0,
-      tasksCompleted: 0,
-      clientsManaged: 0,
-      teamMembers: 0,
-      avgResponseTime: "0",
-      clientRetention: "0",
-      createdAt: new Date(),
-      updatedAt: new Date()
-    };
-    this.knowledgeCategories = new Map();
-    this.knowledgeArticles = new Map();
-    this.knowledgeComments = new Map();
-    this.knowledgeRevisions = new Map();
-    this.knowledgeBookmarks = new Map();
-    this.knowledgeAnalytics = [];
     this.currentId = 1;
     this.initializeData();
     this.initializeKnowledgeData();
@@ -151,123 +128,145 @@ export class MemStorage implements IStorage {
   }
 
   async getClients(): Promise<Client[]> {
-    return Array.from(this.clients.values());
+    return this.clients;
   }
 
   async getClient(id: number): Promise<Client | undefined> {
-    return this.clients.get(id);
+    return this.clients.find(c => c.id === id);
   }
 
-  async createClient(client: InsertClient): Promise<Client> {
-    const id = this.currentId++;
-    const newClient: Client = { 
-      ...client, 
-      id,
+  async createClient(client: Omit<Client, "id" | "createdAt">): Promise<Client> {
+    const newClient: Client = {
+      ...client,
+      id: Date.now(),
       createdAt: new Date(),
-      phone: client.phone ?? null,
-      notes: client.notes ?? null,
-      assignedTeamMembers: client.assignedTeamMembers ?? null,
-      kpis: client.kpis ? JSON.parse(JSON.stringify(client.kpis)) : []
+      phone: client.phone || null,
+      notes: client.notes || null,
+      assignedTeamMembers: client.assignedTeamMembers || [],
+      kpis: client.kpis || []
     };
-    this.clients.set(id, newClient);
+    this.clients.push(newClient);
     return newClient;
   }
 
-  async updateClient(id: number, client: Partial<InsertClient>): Promise<Client | undefined> {
-    const existing = this.clients.get(id);
-    if (!existing) return undefined;
+  async updateClient(id: number, client: Partial<Client>): Promise<Client> {
+    const index = this.clients.findIndex(c => c.id === id);
+    if (index === -1) throw new Error("Client not found");
     
-    const updated: Client = { 
-      ...existing, 
+    const updatedClient = {
+      ...this.clients[index],
       ...client,
-      kpis: client.kpis ? JSON.parse(JSON.stringify(client.kpis)) : existing.kpis
+      phone: client.phone || this.clients[index].phone,
+      notes: client.notes || this.clients[index].notes,
+      assignedTeamMembers: client.assignedTeamMembers || this.clients[index].assignedTeamMembers,
+      kpis: client.kpis || this.clients[index].kpis
     };
-    this.clients.set(id, updated);
-    return updated;
+    
+    this.clients[index] = updatedClient;
+    return updatedClient;
   }
 
   async deleteClient(id: number): Promise<boolean> {
-    return this.clients.delete(id);
+    const index = this.clients.findIndex(c => c.id === id);
+    if (index === -1) return false;
+
+    this.clients.splice(index, 1);
+    return true;
   }
 
   async getTeamMembers(): Promise<TeamMember[]> {
-    return Array.from(this.teamMembers.values());
+    return this.teamMembers;
   }
 
   async getTeamMember(id: number): Promise<TeamMember | undefined> {
-    return this.teamMembers.get(id);
+    return this.teamMembers.find(m => m.id === id);
   }
 
-  async createTeamMember(member: InsertTeamMember): Promise<TeamMember> {
-    const id = this.currentId++;
-    const newMember: TeamMember = { 
-      ...member, 
-      id,
+  async createTeamMember(member: Omit<TeamMember, "id" | "createdAt">): Promise<TeamMember> {
+    const newMember: TeamMember = {
+      ...member,
+      id: Date.now(),
       createdAt: new Date(),
-      position: member.position ?? null,
-      location: member.location ?? null,
-      teamMemberId: member.teamMemberId ?? null,
-      skills: member.skills ?? null,
-      incapacidades: member.incapacidades ? JSON.parse(JSON.stringify(member.incapacidades)) : [],
-      oneOnOneSessions: member.oneOnOneSessions ? JSON.parse(JSON.stringify(member.oneOnOneSessions)) : []
+      position: member.position || null,
+      location: member.location || null,
+      teamMemberId: member.teamMemberId || null,
+      skills: member.skills || [],
+      incapacidades: member.incapacidades || [],
+      oneOnOneSessions: member.oneOnOneSessions || []
     };
-    this.teamMembers.set(id, newMember);
+    this.teamMembers.push(newMember);
     return newMember;
   }
 
   async deleteTeamMember(id: number): Promise<boolean> {
-    return this.teamMembers.delete(id);
+    const index = this.teamMembers.findIndex(m => m.id === id);
+    if (index === -1) return false;
+
+    this.teamMembers.splice(index, 1);
+    return true;
   }
 
   async getTasks(): Promise<Task[]> {
-    return Array.from(this.tasks.values());
+    return this.tasks;
   }
 
   async getTask(id: number): Promise<Task | undefined> {
-    return this.tasks.get(id);
+    return this.tasks.find(t => t.id === id);
   }
 
-  async createTask(task: InsertTask): Promise<Task> {
-    const id = this.currentId++;
-    const newTask: Task = { 
-      ...task, 
-      id,
+  async createTask(task: Omit<Task, "id" | "createdAt">): Promise<Task> {
+    const newTask: Task = {
+      ...task,
+      id: Date.now(),
       createdAt: new Date(),
       status: task.status || "pending",
+      suggestedDueDate: task.suggestedDueDate || null,
       priority: task.priority || "medium",
-      suggestedDueDate: task.suggestedDueDate ?? null,
-      category: task.category ?? null,
-      estimatedMinutes: task.estimatedMinutes ?? null,
-      timeSpent: task.timeSpent ?? null,
-      assignedTo: task.assignedTo ?? null,
-      tags: task.tags ?? null,
-      dueDate: task.dueDate ?? null,
-      completedAt: task.completedAt ?? null,
-      isAiGenerated: task.isAiGenerated ?? null
+      category: task.category || null,
+      estimatedMinutes: task.estimatedMinutes || 30,
+      timeSpent: task.timeSpent || 0,
+      assignedTo: task.assignedTo || null,
+      tags: task.tags || [],
+      isAiGenerated: task.isAiGenerated || false,
+      completedAt: task.completedAt || null
     };
-    this.tasks.set(id, newTask);
+    this.tasks.push(newTask);
     return newTask;
   }
 
-  async updateTask(id: number, task: Partial<InsertTask>): Promise<Task | undefined> {
-    const existing = this.tasks.get(id);
-    if (!existing) return undefined;
+  async updateTask(id: number, task: Partial<Task>): Promise<Task> {
+    const index = this.tasks.findIndex(t => t.id === id);
+    if (index === -1) throw new Error("Task not found");
     
-    const updated: Task = { 
-      ...existing, 
+    const updatedTask = {
+      ...this.tasks[index],
       ...task,
-      completedAt: task.status === "completed" ? new Date() : existing.completedAt
+      status: task.status || this.tasks[index].status,
+      suggestedDueDate: task.suggestedDueDate || this.tasks[index].suggestedDueDate,
+      priority: task.priority || this.tasks[index].priority,
+      category: task.category || this.tasks[index].category,
+      estimatedMinutes: task.estimatedMinutes || this.tasks[index].estimatedMinutes,
+      timeSpent: task.timeSpent || this.tasks[index].timeSpent,
+      assignedTo: task.assignedTo || this.tasks[index].assignedTo,
+      tags: task.tags || this.tasks[index].tags,
+      isAiGenerated: task.isAiGenerated || this.tasks[index].isAiGenerated,
+      completedAt: task.completedAt || this.tasks[index].completedAt
     };
-    this.tasks.set(id, updated);
-    return updated;
+    
+    this.tasks[index] = updatedTask;
+    return updatedTask;
   }
 
   async deleteTask(id: number): Promise<boolean> {
-    return this.tasks.delete(id);
+    const index = this.tasks.findIndex(t => t.id === id);
+    if (index === -1) return false;
+
+    this.tasks.splice(index, 1);
+    return true;
   }
 
   async getEmailTemplates(): Promise<EmailTemplate[]> {
-    return Array.from(this.emailTemplates.values());
+    return this.emailTemplates;
   }
 
   async createEmailTemplate(template: InsertEmailTemplate): Promise<EmailTemplate> {
@@ -278,16 +277,20 @@ export class MemStorage implements IStorage {
       createdAt: new Date(),
       isAiGenerated: template.isAiGenerated ?? null
     };
-    this.emailTemplates.set(id, newTemplate);
+    this.emailTemplates.push(newTemplate);
     return newTemplate;
   }
 
   async deleteEmailTemplate(id: number): Promise<boolean> {
-    return this.emailTemplates.delete(id);
+    const index = this.emailTemplates.findIndex(t => t.id === id);
+    if (index === -1) return false;
+
+    this.emailTemplates.splice(index, 1);
+    return true;
   }
 
   async getClientActivities(clientId: number): Promise<ClientActivity[]> {
-    return this.clientActivities.get(clientId) || [];
+    return this.clientActivities.filter(a => a.clientId === clientId);
   }
 
   async createClientActivity(activity: InsertClientActivity): Promise<ClientActivity> {
@@ -299,50 +302,63 @@ export class MemStorage implements IStorage {
       metadata: activity.metadata ?? {}
     };
     
-    const existing = this.clientActivities.get(activity.clientId) || [];
-    existing.push(newActivity);
-    this.clientActivities.set(activity.clientId, existing);
+    this.clientActivities.push(newActivity);
     
     return newActivity;
   }
 
   async getStatistics(): Promise<Statistics> {
-    return this.statistics;
+    return {
+      id: 1,
+      userId: "1",
+      communicationsSent: 0,
+      tasksCreated: 0,
+      tasksCompleted: 0,
+      clientsManaged: 0,
+      teamMembers: 0,
+      avgResponseTime: "0",
+      clientRetention: "0",
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
   }
 
   async updateStatistics(stats: Partial<InsertStatistics>): Promise<Statistics> {
-    this.statistics = { 
-      ...this.statistics, 
-      ...stats, 
-      id: this.statistics.id,
-      userId: this.statistics.userId,
-      updatedAt: new Date() 
+    return { 
+      id: 1,
+      userId: "1",
+      communicationsSent: 0,
+      tasksCreated: 0,
+      tasksCompleted: 0,
+      clientsManaged: 0,
+      teamMembers: 0,
+      avgResponseTime: "0",
+      clientRetention: "0",
+      createdAt: new Date(),
+      updatedAt: new Date()
     };
-    return this.statistics;
   }
 
   async getAiContext(): Promise<AiContext | undefined> {
-    return this.aiContext;
+    return undefined;
   }
 
   async updateAiContext(context: InsertAiContext): Promise<AiContext> {
-    const newContext: AiContext = { 
-      id: this.aiContext?.id || this.currentId++,
+    return {
+      id: 1,
       userId: context.userId,
       content: context.content,
       updatedAt: new Date()
     };
-    this.aiContext = newContext;
-    return newContext;
   }
 
   // Knowledge Management Methods
   async getKnowledgeCategories(): Promise<KnowledgeCategory[]> {
-    return Array.from(this.knowledgeCategories.values());
+    return this.knowledgeCategories;
   }
 
   async getKnowledgeCategory(id: number): Promise<KnowledgeCategory | undefined> {
-    return this.knowledgeCategories.get(id);
+    return this.knowledgeCategories.find(c => c.id === id);
   }
 
   async createKnowledgeCategory(category: InsertKnowledgeCategory): Promise<KnowledgeCategory> {
@@ -353,29 +369,33 @@ export class MemStorage implements IStorage {
       createdAt: new Date(),
       updatedAt: new Date()
     };
-    this.knowledgeCategories.set(id, newCategory);
+    this.knowledgeCategories.push(newCategory);
     return newCategory;
   }
 
   async updateKnowledgeCategory(id: number, category: Partial<InsertKnowledgeCategory>): Promise<KnowledgeCategory | undefined> {
-    const existing = this.knowledgeCategories.get(id);
-    if (!existing) return undefined;
+    const index = this.knowledgeCategories.findIndex(c => c.id === id);
+    if (index === -1) return undefined;
     
     const updated: KnowledgeCategory = { 
-      ...existing, 
+      ...this.knowledgeCategories[index], 
       ...category,
       updatedAt: new Date()
     };
-    this.knowledgeCategories.set(id, updated);
+    this.knowledgeCategories[index] = updated;
     return updated;
   }
 
   async deleteKnowledgeCategory(id: number): Promise<boolean> {
-    return this.knowledgeCategories.delete(id);
+    const index = this.knowledgeCategories.findIndex(c => c.id === id);
+    if (index === -1) return false;
+
+    this.knowledgeCategories.splice(index, 1);
+    return true;
   }
 
   async getKnowledgeArticles(filters?: { categoryId?: number; status?: string; authorId?: string; search?: string }): Promise<KnowledgeArticle[]> {
-    let articles = Array.from(this.knowledgeArticles.values());
+    let articles = this.knowledgeArticles;
     
     if (filters) {
       if (filters.categoryId) {
@@ -402,11 +422,11 @@ export class MemStorage implements IStorage {
   }
 
   async getKnowledgeArticle(id: number): Promise<KnowledgeArticle | undefined> {
-    return this.knowledgeArticles.get(id);
+    return this.knowledgeArticles.find(a => a.id === id);
   }
 
   async getKnowledgeArticleBySlug(slug: string): Promise<KnowledgeArticle | undefined> {
-    return Array.from(this.knowledgeArticles.values()).find(article => article.slug === slug);
+    return this.knowledgeArticles.find(a => a.slug === slug);
   }
 
   async createKnowledgeArticle(article: InsertKnowledgeArticle): Promise<KnowledgeArticle> {
@@ -423,7 +443,7 @@ export class MemStorage implements IStorage {
       createdAt: new Date(),
       updatedAt: new Date()
     };
-    this.knowledgeArticles.set(id, newArticle);
+    this.knowledgeArticles.push(newArticle);
     
     // Create initial revision
     await this.createKnowledgeRevision({
@@ -439,21 +459,21 @@ export class MemStorage implements IStorage {
   }
 
   async updateKnowledgeArticle(id: number, article: Partial<InsertKnowledgeArticle>): Promise<KnowledgeArticle | undefined> {
-    const existing = this.knowledgeArticles.get(id);
-    if (!existing) return undefined;
+    const index = this.knowledgeArticles.findIndex(a => a.id === id);
+    if (index === -1) return undefined;
     
     const updated: KnowledgeArticle = { 
-      ...existing, 
+      ...this.knowledgeArticles[index], 
       ...article,
-      version: existing.version + 1,
+      version: this.knowledgeArticles[index].version + 1,
       updatedAt: new Date()
     };
     
-    if (article.title && article.title !== existing.title) {
+    if (article.title && article.title !== this.knowledgeArticles[index].title) {
       updated.slug = this.generateSlug(article.title);
     }
     
-    this.knowledgeArticles.set(id, updated);
+    this.knowledgeArticles[index] = updated;
     
     // Create revision for significant changes
     if (article.content || article.title) {
@@ -461,7 +481,7 @@ export class MemStorage implements IStorage {
         articleId: id,
         title: updated.title,
         content: updated.content,
-        authorId: article.authorId || existing.authorId,
+        authorId: article.authorId || this.knowledgeArticles[index].authorId,
         changeDescription: "Content updated",
         version: updated.version
       });
@@ -471,16 +491,17 @@ export class MemStorage implements IStorage {
   }
 
   async deleteKnowledgeArticle(id: number): Promise<boolean> {
-    const deleted = this.knowledgeArticles.delete(id);
-    if (deleted) {
-      this.knowledgeComments.delete(id);
-      this.knowledgeRevisions.delete(id);
-    }
-    return deleted;
+    const index = this.knowledgeArticles.findIndex(a => a.id === id);
+    if (index === -1) return false;
+
+    this.knowledgeComments.delete(id);
+    this.knowledgeRevisions.delete(id);
+    this.knowledgeArticles.splice(index, 1);
+    return true;
   }
 
   async getKnowledgeComments(articleId: number): Promise<KnowledgeComment[]> {
-    return Array.from(this.knowledgeComments.get(articleId) || []);
+    return this.knowledgeComments.get(articleId) || [];
   }
 
   async createKnowledgeComment(comment: InsertKnowledgeComment): Promise<KnowledgeComment> {
@@ -525,7 +546,7 @@ export class MemStorage implements IStorage {
   }
 
   async getKnowledgeRevisions(articleId: number): Promise<KnowledgeRevision[]> {
-    const revisions = this.knowledgeRevisions.get(articleId) || [];
+    const revisions = this.knowledgeRevisions.filter(r => r.articleId === articleId);
     return revisions.sort((a, b) => b.version - a.version);
   }
 
@@ -537,15 +558,13 @@ export class MemStorage implements IStorage {
       createdAt: new Date()
     };
     
-    const revisions = this.knowledgeRevisions.get(revision.articleId) || [];
-    revisions.push(newRevision);
-    this.knowledgeRevisions.set(revision.articleId, revisions);
+    this.knowledgeRevisions.push(newRevision);
     
     return newRevision;
   }
 
   async getUserKnowledgeBookmarks(userId: string): Promise<KnowledgeBookmark[]> {
-    return this.knowledgeBookmarks.get(userId) || [];
+    return this.knowledgeBookmarks.filter(b => b.userId === userId);
   }
 
   async createKnowledgeBookmark(bookmark: InsertKnowledgeBookmark): Promise<KnowledgeBookmark> {
@@ -556,18 +575,15 @@ export class MemStorage implements IStorage {
       createdAt: new Date()
     };
     
-    const bookmarks = this.knowledgeBookmarks.get(bookmark.userId) || [];
-    bookmarks.push(newBookmark);
-    this.knowledgeBookmarks.set(bookmark.userId, bookmarks);
+    this.knowledgeBookmarks.push(newBookmark);
     
     return newBookmark;
   }
 
   async deleteKnowledgeBookmark(userId: string, articleId: number): Promise<boolean> {
-    const bookmarks = this.knowledgeBookmarks.get(userId) || [];
-    const index = bookmarks.findIndex(b => b.articleId === articleId);
+    const index = this.knowledgeBookmarks.findIndex(b => b.userId === userId && b.articleId === articleId);
     if (index !== -1) {
-      bookmarks.splice(index, 1);
+      this.knowledgeBookmarks.splice(index, 1);
       return true;
     }
     return false;
@@ -681,7 +697,7 @@ export class MemStorage implements IStorage {
         createdAt: new Date(),
         updatedAt: new Date()
       };
-      this.knowledgeCategories.set(id, category);
+      this.knowledgeCategories.push(category);
     });
 
     // Create sample articles
@@ -947,7 +963,7 @@ Evaluate the feasibility of implementing AI chatbots for first-level customer su
         createdAt: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000), // Random date within last 30 days
         updatedAt: new Date()
       };
-      this.knowledgeArticles.set(id, knowledgeArticle);
+      this.knowledgeArticles.push(knowledgeArticle);
     });
   }
 
