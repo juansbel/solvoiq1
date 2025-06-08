@@ -53,16 +53,19 @@ export class WebSocketManager {
     });
   }
 
-  public broadcast(message: WebSocketMessage) {
-    const messageWithTimestamp = {
-      ...message,
+  private broadcastPerformanceMetrics(metrics: PerformanceMetrics) {
+    const message: WebSocketMessage = {
+      type: 'performance',
+      data: metrics,
       timestamp: Date.now()
     };
+    this.broadcast(message);
+  }
 
+  private broadcast(message: WebSocketMessage) {
     this.clients.forEach(client => {
       if (client.readyState === WebSocket.OPEN) {
-        client.send(JSON.stringify(messageWithTimestamp));
-        this.metrics.messagesSent++;
+        client.send(JSON.stringify(message));
       }
     });
   }

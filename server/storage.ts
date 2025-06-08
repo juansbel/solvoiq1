@@ -430,31 +430,23 @@ export class MemStorage implements IStorage {
   }
 
   async createKnowledgeArticle(article: InsertKnowledgeArticle): Promise<KnowledgeArticle> {
-    const id = this.currentId++;
     const slug = this.generateSlug(article.title);
-    const newArticle: KnowledgeArticle = { 
-      ...article, 
-      id,
+    const newArticle: KnowledgeArticle = {
+      ...article,
+      id: Date.now(),
       slug,
       viewCount: 0,
       likes: 0,
       dislikes: 0,
       version: 1,
+      metadata: article.metadata || null,
+      attachments: article.attachments || [],
+      relatedArticles: article.relatedArticles || [],
+      archivedAt: null,
       createdAt: new Date(),
       updatedAt: new Date()
     };
     this.knowledgeArticles.push(newArticle);
-    
-    // Create initial revision
-    await this.createKnowledgeRevision({
-      articleId: id,
-      title: article.title,
-      content: article.content,
-      authorId: article.authorId,
-      changeDescription: "Initial creation",
-      version: 1
-    });
-    
     return newArticle;
   }
 
@@ -590,10 +582,15 @@ export class MemStorage implements IStorage {
   }
 
   async trackKnowledgeAnalytics(analytics: InsertKnowledgeAnalytics): Promise<KnowledgeAnalytics> {
-    const id = this.currentId++;
-    const newAnalytics: KnowledgeAnalytics = { 
-      ...analytics, 
-      id,
+    const newAnalytics: KnowledgeAnalytics = {
+      ...analytics,
+      id: Date.now(),
+      metadata: analytics.metadata || null,
+      timeSpent: analytics.timeSpent || null,
+      sessionId: analytics.sessionId || null,
+      ipAddress: analytics.ipAddress || null,
+      userAgent: analytics.userAgent || null,
+      referrer: analytics.referrer || null,
       createdAt: new Date()
     };
     this.knowledgeAnalytics.push(newAnalytics);
@@ -601,7 +598,7 @@ export class MemStorage implements IStorage {
   }
 
   async getKnowledgeAnalytics(articleId?: number, timeframe?: string): Promise<KnowledgeAnalytics[]> {
-    let analytics = this.knowledgeAnalytics;
+    let analytics = [...this.knowledgeAnalytics];
     
     if (articleId) {
       analytics = analytics.filter(a => a.articleId === articleId);
@@ -609,26 +606,20 @@ export class MemStorage implements IStorage {
     
     if (timeframe) {
       const now = new Date();
-      let cutoffDate: Date;
+      const timeframes = {
+        '24h': 24 * 60 * 60 * 1000,
+        '7d': 7 * 24 * 60 * 60 * 1000,
+        '30d': 30 * 24 * 60 * 60 * 1000
+      };
       
-      switch (timeframe) {
-        case '24h':
-          cutoffDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-          break;
-        case '7d':
-          cutoffDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-          break;
-        case '30d':
-          cutoffDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-          break;
-        default:
-          return analytics;
-      }
-      
-      analytics = analytics.filter(a => a.createdAt >= cutoffDate);
+      const cutoff = new Date(now.getTime() - (timeframes[timeframe as keyof typeof timeframes] || 0));
+      analytics = analytics.filter(a => a.createdAt && a.createdAt > cutoff);
     }
     
-    return analytics.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+    return analytics.sort((a, b) => {
+      if (!a.createdAt || !b.createdAt) return 0;
+      return b.createdAt.getTime() - a.createdAt.getTime();
+    });
   }
 
   private generateSlug(title: string): string {
