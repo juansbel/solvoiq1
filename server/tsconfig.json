@@ -2,16 +2,25 @@
   "extends": "../tsconfig.json",
   "compilerOptions": {
     "module": "ESNext",
-    "moduleResolution": "bundler",
-    "outDir": "../dist/server",
-    "noEmit": false,
-    "allowImportingTsExtensions": true,
-    "isolatedModules": true,
-    "esModuleInterop": true,
+    "moduleResolution": "Bundler",
     "target": "ESNext",
-    "lib": ["esnext"],
-    "types": ["node"]
+    "outDir": "../dist/server",
+    "rootDir": ".",
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./*"]
+    },
+    "allowJs": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "strict": true,
+    "noEmit": false,
+    "emitDeclarationOnly": false,
+    "allowImportingTsExtensions": false,
+    "resolveJsonModule": true,
+    "isolatedModules": true
   },
-  "include": ["./**/*"],
-  "exclude": ["node_modules", "dist", "**/*.test.ts"]
+  "include": ["./**/*.ts"],
+  "exclude": ["node_modules", "dist"]
 } 
