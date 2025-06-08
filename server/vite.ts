@@ -32,7 +32,7 @@ export async function createDevServer() {
       }
     },
     appType: 'custom',
-    root: path.resolve(__dirname, '..'),
+    root: path.resolve(process.cwd(), 'client'),
     build: {
       target: 'esnext',
       outDir: 'dist/client'
@@ -59,10 +59,7 @@ export async function setupVite(app: Express, server: HttpServer) {
 
       // always reload the index.html file from disk incase it changes
       let template = await fs.promises.readFile(clientTemplate, "utf-8");
-      template = template.replace(
-        `src="/src/main.tsx"`,
-        `src="/src/main.tsx?v=${nanoid()}"`,
-      );
+      
       const page = await vite.transformIndexHtml(url, template);
       res.status(200).set({ "Content-Type": "text/html" }).end(page);
     } catch (e) {
