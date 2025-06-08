@@ -45,7 +45,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/clients", async (req, res) => {
     try {
-      const clientData = insertClientSchema.parse(req.body);
+      const clientData = {
+        ...insertClientSchema.parse(req.body),
+        phone: req.body.phone || null,
+        notes: req.body.notes || null,
+        assignedTeamMembers: req.body.assignedTeamMembers || []
+      };
       const client = await withTimeout(storage.createClient(clientData));
       res.json(client);
     } catch (error) {
@@ -57,7 +62,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put("/api/clients/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      const clientData = insertClientSchema.partial().parse(req.body);
+      const clientData = {
+        ...insertClientSchema.partial().parse(req.body),
+        phone: req.body.phone || null,
+        notes: req.body.notes || null,
+        assignedTeamMembers: req.body.assignedTeamMembers || []
+      };
       const client = await withTimeout(storage.updateClient(id, clientData));
       if (!client) {
         return res.status(404).json({ message: "Client not found" });
