@@ -6,84 +6,97 @@ import compression from 'compression';
 import morgan from 'morgan';
 import { config } from './config';
 import logger from './logger';
-import { stream } from './logger';
 
 // CORS configuration
-export const corsMiddleware = cors({
-  origin: config.cors.origin,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
+const corsOptions = {
+  origin: [
+    "http://localhost:5000",
+    "http://127.0.0.1:5000",
+    "https://*.vercel.app", // Allow Vercel deployments
+    process.env.FRONTEND_URL // Allow custom frontend URL
+  ].filter(Boolean),
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true,
-});
+};
 
 // Rate limiting
-export const rateLimiter = rateLimit({
-  windowMs: config.rateLimit.windowMs,
-  max: config.rateLimit.max,
-  message: 'Too many requests from this IP, please try again later.',
-  standardHeaders: true,
-  legacyHeaders: false,
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // limit each IP to 100 requests per windowMs
 });
 
 // Request logging
-export const requestLogger = morgan('combined', { stream });
+const requestLogger = morgan(
+  (tokens, req, res) => {
+    return [
+      tokens.method(req, res),
+      tokens.url(req, res),
+      tokens.status(req, res),
+      tokens.res(req, res, "content-length"),
+      "-",
+      tokens["response-time"](req, res),
+      "ms"
+    ].join(" ");
+  },
+  {
+    stream: {
+      write: (message) => logger.info(message.trim())
+    }
+  }
+);
 
-// Performance monitoring middleware
-export const performanceMonitor = (req: express.Request, res: express.Response, next: express.NextFunction) => {
-  const start = process.hrtime();
-
+// Performance monitoring
+const performanceMonitor = (req: express.Request, res: express.Response, next: express.NextFunction) => {
+  const start = Date.now();
   res.on('finish', () => {
-    const [seconds, nanoseconds] = process.hrtime(start);
-    const duration = seconds * 1000 + nanoseconds / 1000000; // Convert to milliseconds
-
-    logger.debug('Request completed', {
-      method: req.method,
-      url: req.url,
-      status: res.statusCode,
-      duration: `${duration.toFixed(2)}ms`,
-    });
+    const duration = Date.now() - start;
+    logger.info(`${req.method} ${req.path} ${res.statusCode} in ${duration}ms`);
   });
-
   next();
 };
 
-// Error handling middleware
-export const errorHandler = (
+// Error handling
+const errorHandler = (
   err: Error,
   req: express.Request,
   res: express.Response,
   next: express.NextFunction
 ) => {
-  logger.error('Error occurred', {
-    error: err.message,
-    stack: err.stack,
-    path: req.path,
-    method: req.method,
-  });
+  logger.error('Error:', err);
+  
+  // Handle specific error types
+  if (err.name === 'ValidationError') {
+    return res.status(400).json({
+      error: 'Validation Error',
+      details: err.message
+    });
+  }
+  
+  if (err.name === 'PostgresError') {
+    return res.status(500).json({
+      error: 'Database Error',
+      message: 'An error occurred while accessing the database'
+    });
+  }
 
+  // Default error response
   res.status(500).json({
-    error: 'Internal Server Error',
-    message: config.env === 'development' ? err.message : 'Something went wrong',
+    error: err.message || 'Internal Server Error'
   });
 };
 
-// Security middleware
-export const securityMiddleware = [
-  helmet(),
-  corsMiddleware,
-  rateLimiter,
-];
-
-// Performance middleware
-export const performanceMiddleware = [
-  compression(),
-  requestLogger,
-  performanceMonitor,
-];
-
-// Export all middleware
+// Group middleware by purpose
 export const middleware = {
-  security: securityMiddleware,
-  performance: performanceMiddleware,
-  error: errorHandler,
+  security: [
+    helmet(),
+    cors(corsOptions),
+    limiter
+  ],
+  performance: [
+    compression(),
+    requestLogger,
+    performanceMonitor
+  ],
+  error: errorHandler
 }; 

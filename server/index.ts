@@ -37,11 +37,11 @@ app.use('/health', healthRouter);
 const server = createServer(app);
 registerRoutes(app);
 
-// Initialize WebSocket server
-wsManager.initialize(server);
-
-// Start performance monitoring
-startPerformanceMonitoring();
+// Initialize WebSocket server only in development
+if (config.env === "development") {
+  wsManager.initialize(server);
+  startPerformanceMonitoring();
+}
 
 // Setup development or production environment
 if (config.env === "development") {
@@ -57,10 +57,15 @@ if (config.env === "development") {
 // Error handling middleware (should be last)
 app.use(middleware.error);
 
-// Start server
-server.listen(config.port, "127.0.0.1", () => {
-  logger.info(`Server running on port ${config.port}`);
-});
+// Start server only in development
+if (config.env === "development") {
+  server.listen(config.port, "127.0.0.1", () => {
+    logger.info(`Server running on port ${config.port}`);
+  });
+}
+
+// Export the Express app for Vercel
+export default app;
 
 // Graceful shutdown
 const shutdown = async () => {
