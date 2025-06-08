@@ -1,0 +1,260 @@
+Client & Team Communication Hub (React App) - Also referred to as "SolvoIQ".
+
+Purpose:
+The application serves as a centralized platform for managing client communications and team interactions. It integrates AI capabilities to assist with tasks such as professional email rewriting, generating follow-up messages, analyzing client emails for actionable insights, creating tasks, generating client reports, and managing email templates. The primary goal is to streamline client relationship management and enhance communication efficiency.
+
+Language & Framework:
+
+Language: JavaScript
+
+Framework: React (using functional components and hooks)
+
+Styling: Tailwind CSS for a modern, minimalistic design.
+
+Icons: lucide-react icon library.
+
+Core UI Structure:
+The application features a two-column layout:
+
+Sidebar Navigation (Left): A fixed sidebar provides access to all major sections/tabs of the application. It includes the app's branding and a list of navigation items with icons.
+
+Main Content Area (Right): This area dynamically renders the content based on the selected tab in the sidebar.
+
+Data Management Mode:
+
+Current Mode: "Sample Data Mode". The application initializes and operates with predefined sample datasets for clients, team members, tasks, email templates, global AI context, and statistics.
+
+Write Operations: Actions that would typically write to a database (e.g., adding a client, creating a task) are simulated by updating the local state (sample data) and displaying a success message indicating that the operation is not persisted to a backend in this mode.
+
+Firebase Authentication: User authentication via Firebase (sign-in with custom token or anonymously) is active, providing a userId.
+
+AI API Calls: Calls to the Gemini API for content generation are intended to be live.
+
+Key Features and Tabs
+The application is organized into several distinct tabs accessible via the sidebar:
+
+Dashboard:
+
+Purpose: Provides a high-level overview of key operational statistics for supervisors or users.
+
+Content: Displays StatCard components for:
+
+Communications Sent (e.g., emails rewritten, follow-ups generated)
+
+Tasks Created (total)
+
+Tasks Completed
+
+Task Completion Percentage
+
+Data Source: SAMPLE_STATS object. Statistics are updated locally when relevant actions are performed.
+
+Clients:
+
+Purpose: Manage client information and access detailed client-specific subpages.
+
+Main View:
+
+Add New Client Form: Allows users to input details for a new client (Name, Company, Email, Phone, Notes). Submitting this form adds the new client to the local SAMPLE_CLIENTS array.
+
+Existing Clients List: Displays a list of current clients from SAMPLE_CLIENTS. Each client is presented in a card-like format showing their name, company, and email. A "View Details" button is available for each client.
+
+Client Detail Subpage (View): Activated when "View Details" is clicked for a client. This subpage centralizes all information related to the selected client.
+
+Navigation: A "Back to Clients List" button.
+
+Client Information Card: Displays the client's full details (name, company, email, phone, notes). An "Edit Client" button opens a modal to modify this information.
+
+Assigned Team Members: Lists team members assigned to this client (names are resolved from SAMPLE_TEAM_MEMBERS based on IDs stored in the client's assignedTeamMembers array).
+
+Activity Logs Section:
+
+Displays a chronological list of log entries for the client (from SAMPLE_CLIENT_DETAIL_DATA).
+
+A form to add new text-based log entries, which are added to the local sample log data for that client.
+
+Meetings Section:
+
+A form to record new meetings: Date, Attendees (comma-separated string), Summary, and Action Items (multi-line string).
+
+Lists past meetings recorded for this client (from SAMPLE_CLIENT_DETAIL_DATA), showing date, attendees, summary, and action items.
+
+Recorded Follow-ups Section:
+
+A form to manually record a follow-up communication: Date, Subject (optional), and Body.
+
+An "AI Generate & Save" button which triggers the AI follow-up generation (using global context and potentially previous communications) and then "saves" the generated follow-up to this client's local sample data.
+
+Lists previously recorded follow-ups, indicating if they were AI-generated or manually entered.
+
+Edit Client Modal: Allows modification of client details (name, company, email, phone, notes) and assignment/unassignment of team members via a checkbox list of available team members. Changes update the local SAMPLE_CLIENTS data.
+
+Team:
+
+Purpose: Manage team member information.
+
+Content:
+
+Add New Team Member Form: Allows creation of new team member profiles (Name, Email, Role). Adds to SAMPLE_TEAM_MEMBERS.
+
+Team Members List: Displays existing team members from SAMPLE_TEAM_MEMBERS with their name, email, and role.
+
+(Note: Team member detail pages or log functionality for team members, though previously considered, is simplified in the current sample data version, primarily focusing on their use in client assignment).
+
+Tasks:
+
+Purpose: Manage and track tasks, including those generated by AI.
+
+Content:
+
+Generate Tasks Button: "Generate Tasks from General Context" button triggers an AI call to create tasks based on the global AI context and recent communications (if any). New tasks are added to the local SAMPLE_TASKS array.
+
+Task Lists: Tasks are displayed in two sections:
+
+Pending Tasks
+
+Completed Tasks
+
+Task Item: Each task shows its name, description, and suggested due date.
+
+Status Toggle: Users can toggle a task's status between "pending" and "completed". This updates the local sample task data and the relevant counters in SAMPLE_STATS.
+
+Rewrite Email:
+
+Purpose: Assist users in professionalizing their email drafts.
+
+Workflow:
+
+User inputs a draft email into a textarea.
+
+Clicks "Rewrite Email with AI".
+
+The application sends the draft and the global clientContext to the Gemini API.
+
+The AI-generated professional version is displayed in a read-only textarea.
+
+The "Communications Sent" stat is incremented.
+
+Follow-up:
+
+Purpose: Generate contextually relevant follow-up emails.
+
+Workflow:
+
+User can input optional notes or specific points for the follow-up.
+
+The system uses these notes, the global clientContext, and potentially the last generated/drafted email as context.
+
+Clicking "Generate Follow-up Email" calls the Gemini API.
+
+The generated follow-up is displayed.
+
+The "Communications Sent" stat is incremented.
+
+(If on a client detail page, the "AI Generate & Save" button in the "Recorded Follow-ups" section performs a similar AI generation but also saves the result to that client's sample data).
+
+Analyze Email:
+
+Purpose: Extract insights and suggest actions from a client's email.
+
+Workflow:
+
+User pastes a client's email into a textarea.
+
+Clicks "Analyze Email & Suggest Next Steps".
+
+The email content and global clientContext are sent to the Gemini API.
+
+The AI's analysis and suggested next steps (typically a bulleted list) are displayed.
+
+Post-Analysis Actions:
+
+"Create Tasks from Suggestions": Sends the suggestions and context to the AI to generate a structured list of tasks (added to local sample task list and updates stats).
+
+"Generate Email Templates from Suggestions": Sends suggestions and context to the AI to generate 2-3 email templates (title and body). These are displayed with options to "Copy Body" and "Save to Gallery".
+
+Report:
+
+Purpose: Generate concise client activity reports.
+
+Workflow:
+
+User can input specific points or recent activities to highlight.
+
+The system uses these points and the global clientContext.
+
+Clicking "Generate Report" calls the Gemini API.
+
+The generated report (typically structured with sections like Overview, Key Activities, Next Steps) is displayed.
+
+The "Communications Sent" stat is incremented.
+
+Templates (Gallery):
+
+Purpose: Store and reuse frequently used email templates.
+
+Content:
+
+Displays a gallery of email templates saved by the user (from SAMPLE_EMAIL_TEMPLATES).
+
+Each template card shows its title and body (preview).
+
+Options:
+
+"Copy Body": Copies the template body to the clipboard.
+
+"Delete": Removes the template from the local SAMPLE_EMAIL_TEMPLATES array (after a confirmation dialog).
+
+Saving: Templates generated in the "Analyze Email" tab can be saved to this gallery.
+
+AI Settings (formerly "AI Context"):
+
+Purpose: Manage the global context provided to the AI for all its generation tasks.
+
+Content:
+
+A large textarea where the user can input and edit the global AI context (e.g., company information, communication style preferences, key contacts, general client interaction guidelines).
+
+"Save Context" button (simulates saving in sample mode).
+
+Context is auto-saved (debounced) as the user types.
+
+Core Technical Components & Helper Functions
+ActionButton: A reusable button component with variants (primary, secondary), icon support, and disabled states.
+
+StatCard: Displays individual statistics on the dashboard.
+
+TaskItem: Renders individual tasks with status toggling.
+
+SidebarTabButton: For navigation items in the sidebar.
+
+TextareaWithCopy & CopyButton: Provides textareas with an easy copy-to-clipboard button.
+
+LoadingSpinner: A visual indicator for loading states (e.g., during AI API calls).
+
+Message: Displays success or error messages to the user.
+
+ConfirmDialog: A modal for user confirmations (e.g., before deleting a template).
+
+debounce: Utility function for debouncing actions like context auto-save.
+
+callGeminiAPI: Centralized function for making requests to the Gemini API. Handles prompt construction, API key, and basic response parsing (including JSON output if a schema is provided).
+
+State Management: Primarily uses React's useState and useEffect hooks. For sample data, array manipulations (map, filter, concat) are used to simulate database operations.
+
+Styling Conventions:
+
+commonSectionClass: Applied to main content blocks within tabs for consistent padding, background, and shadow.
+
+commonHeaderClass: For main H2 titles within tabs.
+
+commonSubHeaderClass: For H3 sub-titles.
+
+AI Interaction Details
+Model: gemini-2.0-flash is specified for API calls.
+
+Prompts: Specific prompts are constructed for each AI-powered feature, incorporating the global clientContext and any feature-specific inputs (e.g., draft email, analysis suggestions).
+
+Structured Output: For tasks and email template generation, JSON schemas are defined and included in the API request to guide the AI in producing structured JSON output, which is then parsed by the application.
+
+This description covers the primary aspects of the application's current state in "Sample Data Mode," outlining its purpose, structure, features, and key technical considerations for replication.

@@ -1,0 +1,57 @@
+Enhanced Commission Tracking (Dashboard):
+
+The Dashboard now features a more detailed "Monthly Commission Estimator."
+It clearly breaks down:
+Assigned Team Members: Count of team members linked to clients.
+Base Commission (TMs): Calculated from COP_PER_TEAM_MEMBER (84,000 COP) for each assigned team member.
+Performance Bonuses: Calculated based on COP_PERFORMANCE_BONUS (16,000 COP) for each team member whose assigned client has all their defined KPIs met.
+New Positions Sold: An input field allows you to enter the number of new positions sold, with the bonus calculated using COP_NEW_POSITION_BONUS (300,000 COP).
+Total Estimated Commission: A prominent display of the sum of all commission components.
+II. Detailed Client KPI Management:
+
+Client Data: SAMPLE_CLIENTS now includes a kpis array for each client. Each KPI object has id, name, target, actual, and met (boolean) properties.
+Client Detail Page:
+A new "KPIs" tab has been added within the client detail view.
+This tab lists all defined KPIs for the selected client, showing their name, target, actual value, and met status with visual indicators.
+Edit Client Modal:
+When editing a client, you can now view and edit their KPIs. For each KPI, you can modify its name, target, actual value, and toggle its met status.
+You can also add new KPIs to a client profile (in sample mode, this adds to the local data).
+A client's overall performance (which feeds the commission bonus) is determined if all their defined KPIs are marked as met.
+III. Team Member Enhancements:
+
+Data Structure: SAMPLE_TEAM_MEMBERS now includes fields for position, location, teamMemberId, and new arrays for incapacidades (absences) and oneOnOneSessions.
+Team Tab:
+Each team member card now displays their role, position, location, and TM ID.
+A "View/Log" button has been added to each team member card, which opens a new Team Member Detail Modal.
+Team Member Detail Modal:
+Displays the team member's full information.
+1:1 Sessions Section:
+Lists past 1:1 sessions with date, discussion points, and action items.
+A form to log new 1:1 sessions.
+Incapacidades (Absences) Section:
+Lists logged incapacidades with start/end dates and reason.
+A form to log new incapacidades.
+IV. AI-Assisted Communication (Initial UI):
+
+Email Tools Tab (Consolidated): The "Rewrite Email" tab now also includes a button:
+"Get AI Response Suggestions": When clicked (after you have some draft or rewritten email content), this simulates an AI call (for now, it will show a loading spinner and then could potentially display a few pre-defined sample suggestions if the aiSuggestions state is populated by a mock function, though the Gemini call is still there if you wish to make it live). The prompt is constructed to ask for alternative phrasings or short response ideas.
+AI Analysis & Helpers Tab (Consolidated): The "Analyze Email" tab is now part of a broader "AI Analysis & Helpers" tab, which also includes the new Jira Ticket Helper.
+V. Jira Ticket Helper:
+
+New Section in "AI Analysis & Helpers" Tab: A dedicated "Jira Ticket Helper" form.
+Form Fields:
+Dropdown to select a Team Member (populates from SAMPLE_TEAM_MEMBERS).
+Dropdown to select a Client (optional, populates from SAMPLE_CLIENTS).
+Textarea for a short issue description.
+Functionality: Upon submission, the helper generates a structured text block that includes:
+Team Member's full name, ID, position, and location (from sample data).
+Associated Client's name, ID, and a mock client code (from sample data).
+The user-provided issue description.
+Placeholder fields like "Environment" and "Priority."
+This generated text is displayed in a read-only textarea with a copy button, ready for you to paste into Jira.
+VI. Layout and UI Refinements:
+
+Client Detail Page Tabs: The client detail view now uses an internal tabbed navigation ("Overview", "KPIs", "Logs", "Meetings", "Follow-ups") to better organize the extensive information. The active sub-tab is managed by activeClientDetailTab state.
+Sidebar Consolidation: "Rewrite Email" and "Follow-up" features are now conceptually grouped under "Email Tools". "Analyze Email" is grouped with the new "Jira Ticket Helper" under "AI Analysis & Helpers" for better thematic organization in the sidebar.
+Visual Consistency: Continued use of commonSectionClass and refined styling for forms, lists, and modals to maintain the clean, modern aesthetic.
+New Icons: Added appropriate icons for the new features and sections.
