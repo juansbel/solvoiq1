@@ -9,7 +9,7 @@
     "dev": "NODE_ENV=development tsx server/index.ts",
     "build:client": "vite build",
     "build:server": "tsc -p server/tsconfig.json && node -e \"const pkg=require('./package.json'); const fs=require('fs'); fs.writeFileSync('./dist/server/package.json', JSON.stringify({main: 'index.js', type: 'module', dependencies: pkg.dependencies, engines: {node: '18'}}))\"",
-    "build": "npm run build:client && npm run build:server",
+    "build": "npx update-browserslist-db@latest && npm run build:client && npm run build:server",
     "start": "NODE_ENV=production node dist/server/index.js",
     "deploy": "npm run build && firebase deploy",
     "deploy:hosting": "npm run build:client && firebase deploy --only hosting",
