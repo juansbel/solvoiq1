@@ -1,0 +1,18 @@
+# This file configures the build and deployment settings for Netlify.
+
+# 1. Build Settings
+# Specifies the command to run to build the site and the directory
+# where the finished static files are located.
+[build]
+  command = "npm run build"
+  publish = "dist/client"
+
+# 2. Redirect Rule for Single-Page Applications (SPAs)
+# This is the most important part for fixing the "Page not found" error.
+# It tells Netlify to serve the main index.html file for any path
+# that doesn't directly match a file in the 'publish' directory.
+# This allows the React Router to handle all client-side navigation.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200 
