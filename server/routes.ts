@@ -2,6 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./index";
 import { wsManager } from "./websocket";
+import { aiService } from "./ai-service";
 import { 
   insertClientSchema, insertTeamMemberSchema, insertTaskSchema,
   insertEmailTemplateSchema, insertClientActivitySchema, insertAiContextSchema
@@ -640,6 +641,23 @@ The report should be well-formatted, detailed, and suitable for client presentat
       res.json({ report });
     } catch (error) {
       res.status(500).json({ message: "Failed to generate report" });
+    }
+  });
+
+  // AI Service routes
+  app.post("/api/ai/rewrite", async (req, res) => {
+    const { text, prompt } = req.body;
+
+    if (!text || !prompt) {
+      return res.status(400).json({ message: "Missing text or prompt for AI rewrite." });
+    }
+
+    try {
+      const rewrittenText = await aiService.rewriteText(text, prompt);
+      res.json({ rewrittenText });
+    } catch (error) {
+      console.error("AI rewrite error:", error);
+      res.status(500).json({ message: "Failed to process AI request." });
     }
   });
 

@@ -17,6 +17,8 @@ const envSchema = z.object({
   RATE_LIMIT_WINDOW_MS: z.string().default('900000'), // 15 minutes
   RATE_LIMIT_MAX: z.string().default('100'),
   LOG_LEVEL: z.enum(['error', 'warn', 'info', 'debug']).default('info'),
+  AI_API_KEY: z.string().min(1),
+  AI_API_URL: z.string().url(),
 });
 
 // Parse and validate environment variables
@@ -58,7 +60,11 @@ export const config = {
     max: parseInt(env.RATE_LIMIT_MAX, 10)
   },
   logging: {
-    level: getEnv('LOG_LEVEL', env.LOG_LEVEL)
+    level: getEnv('LOG_LEVEL', 'info'),
+  },
+  ai: {
+    apiKey: getEnv('GEMINI_API_KEY', ''),
+    apiUrl: getEnv('GEMINI_API_URL', 'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent'),
   }
 } as const;
 

@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useRef, useState, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import type { Client, Task } from "@shared/schema";
 
 // Cache management hook for optimized data fetching
 export function useCacheOptimization() {
@@ -224,5 +225,69 @@ export function useOptimizedSearch<T>(
     isSearching,
     updateQuery,
     clearSearch
+  };
+}
+
+export function usePerformanceOptimization() {
+
+  const getClientHealth = useCallback((client: Client, tasks: Task[]) => {
+    const clientTasks = tasks.filter(task => 
+      task.assignedTo && task.assignedTo.includes(client.name)
+    );
+    
+    const completedTasks = clientTasks.filter(task => task.status === "completed").length;
+    const totalTasks = clientTasks.length;
+    const completionRate = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
+    
+    const kpis = client.kpis || [];
+    const metKpis = kpis.filter(kpi => kpi.met).length;
+    const kpiHealth = kpis.length > 0 ? (metKpis / kpis.length) * 100 : 100;
+    
+    const overallHealth = (completionRate + kpiHealth) / 2;
+    
+    let status: "excellent" | "good" | "warning" | "critical";
+    if (overallHealth >= 80) status = "excellent";
+    else if (overallHealth >= 60) status = "good";
+    else if (overallHealth >= 40) status = "warning";
+    else status = "critical";
+    
+    return { status, score: Math.round(overallHealth) };
+  }, []);
+
+  const getTeamEfficiency = useCallback((teamMembers, tasks) => {
+    // Placeholder for more complex calculation
+    if (!teamMembers || !tasks) return [];
+    return teamMembers.map(member => ({
+        id: member.id,
+        name: member.name,
+        efficiency: Math.floor(Math.random() * 30) + 70, // Random efficiency between 70-100%
+    }));
+  }, []);
+  
+  const getRevenueTrend = useCallback(() => {
+    // Placeholder for real data fetching
+    return [
+      { month: "Jan", value: 180000, target: 200000 },
+      { month: "Feb", value: 195000, target: 210000 },
+      { month: "Mar", value: 210000, target: 220000 },
+      { month: "Apr", value: 225000, target: 230000 }
+    ];
+  }, []);
+
+  const getTaskDistribution = useCallback((tasks: Task[]) => {
+    if(!tasks) return { completed: 0, in_progress: 0, overdue: 0 };
+    return tasks.reduce((acc, task) => {
+      if (task.status === 'completed') acc.completed++;
+      else if (new Date(task.dueDate) < new Date()) acc.overdue++;
+      else acc.in_progress++;
+      return acc;
+    }, { completed: 0, in_progress: 0, overdue: 0 });
+  }, []);
+
+  return {
+    getClientHealth,
+    getTeamEfficiency,
+    getRevenueTrend,
+    getTaskDistribution,
   };
 }
