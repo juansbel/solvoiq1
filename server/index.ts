@@ -18,7 +18,7 @@ export let storage: DrizzleStorage | MemStorage;
 
 // Use database storage if DATABASE_URL is available, otherwise use in-memory storage
 if (config.database.url) {
-  storage = new DrizzleStorage(config.database.url);
+  storage = new DrizzleStorage();
   logger.info("Using database storage");
 } else {
   storage = new MemStorage();

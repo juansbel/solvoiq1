@@ -22,12 +22,23 @@ const envSchema = z.object({
 // Parse and validate environment variables
 const env = envSchema.parse(process.env);
 
+const getEnv = (key: string, defaultValue?: string): string => {
+  const value = process.env[key];
+  if (value !== undefined) {
+    return value;
+  }
+  if (defaultValue !== undefined) {
+    return defaultValue;
+  }
+  throw new Error(`Environment variable ${key} is not set`);
+};
+
 // Configuration object
 export const config = {
   env: env.NODE_ENV,
   port: parseInt(env.PORT, 10),
   database: {
-    url: env.DATABASE_URL,
+    url: getEnv('NETLIFY_DATABASE_URL', env.DATABASE_URL),
     ssl: {
       rejectUnauthorized: false
     }
@@ -47,7 +58,7 @@ export const config = {
     max: parseInt(env.RATE_LIMIT_MAX, 10)
   },
   logging: {
-    level: env.LOG_LEVEL
+    level: getEnv('LOG_LEVEL', env.LOG_LEVEL)
   }
 } as const;
 
