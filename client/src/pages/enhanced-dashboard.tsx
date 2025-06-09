@@ -211,29 +211,11 @@ const EnhancedDashboard: React.FC = () => {
     retry: 3,
   });
 
-  const { data: clients = [], isLoading: clientsLoading, error: clientsError } = useQuery<Client[]>({
-    queryKey: ["/api/clients"],
-    staleTime: 30000,
-    retry: 3,
-  });
-
-  const { data: tasks = [], isLoading: tasksLoading, error: tasksError } = useQuery<Task[]>({
-    queryKey: ["/api/tasks"],
-    staleTime: 30000,
-    retry: 3,
-  });
-
-  const { data: teamMembers = [], isLoading: teamLoading, error: teamError } = useQuery<TeamMember[]>({
-    queryKey: ["/api/team-members"],
-    staleTime: 30000,
-    retry: 3,
-  });
-
   const floatingNotifications = useFloatingNotifications();
 
   // Combined loading state
-  const combinedLoading = statsLoading || clientsLoading || tasksLoading || teamLoading || isLoading;
-  const hasError = statsError || clientsError || tasksError || teamError;
+  const combinedLoading = statsLoading || isLoading;
+  const hasError = statsError || error;
 
   // Early return for loading states
   if (combinedLoading) {
