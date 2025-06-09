@@ -30,6 +30,7 @@ export interface IStorage {
 
   // Task management
   getTasks(): Promise<Task[]>;
+  getTasksByClientId(clientId: number): Promise<Task[]>;
   getTask(id: number): Promise<Task | undefined>;
   createTask(task: InsertTask): Promise<Task>;
   updateTask(id: number, task: Partial<InsertTask>): Promise<Task | undefined>;
@@ -208,6 +209,10 @@ export class MemStorage implements IStorage {
 
   async getTasks(): Promise<Task[]> {
     return this.tasks;
+  }
+
+  async getTasksByClientId(clientId: number): Promise<Task[]> {
+    return this.tasks.filter(t => t.assignedTo === clientId);
   }
 
   async getTask(id: number): Promise<Task | undefined> {

@@ -126,6 +126,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/tasks/by-client/:clientId", async (req, res) => {
+    try {
+      const clientId = parseInt(req.params.clientId);
+      if (isNaN(clientId)) {
+        return res.status(400).json({ message: "Invalid client ID" });
+      }
+      const tasks = await withTimeout(storage.getTasksByClientId(clientId));
+      res.json(tasks);
+    } catch (error) {
+      console.error("Error fetching tasks for client:", error);
+      res.status(500).json({ message: "Failed to fetch tasks" });
+    }
+  });
+
   app.post("/api/tasks", async (req, res) => {
     try {
       const taskData = insertTaskSchema.parse(req.body);
