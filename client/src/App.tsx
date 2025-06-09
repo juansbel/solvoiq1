@@ -13,7 +13,7 @@ import { MobileHeader } from "@/components/ui/mobile-header";
 import { useMobile } from "@/hooks/use-mobile";
 
 import { AppSidebar } from "@/components/app-sidebar";
-import { Dashboard } from "@/pages/enhanced-dashboard";
+import Dashboard from "@/pages/enhanced-dashboard";
 import SignIn from "@/pages/signin";
 import LandingPage from "@/pages/landing";
 import NotFound from "@/pages/not-found";
