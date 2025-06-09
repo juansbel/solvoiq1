@@ -1,6 +1,5 @@
 import express from "express";
 import { createServer } from "http";
-import * as functions from 'firebase-functions';
 import cors from "cors";
 
 import { registerRoutes } from "./routes";
@@ -25,7 +24,7 @@ if (config.database.url) {
   logger.info("Using in-memory storage (no DATABASE_URL provided)");
 }
 
-const app = express();
+export const app = express();
 
 // Configure CORS
 app.use(cors({
@@ -48,8 +47,6 @@ app.use('/health', healthRouter);
 registerRoutes(app);
 
 app.use(middleware.error);
-
-export const api = functions.https.onRequest(app);
 
 if (process.env.NODE_ENV !== 'production') {
   const server = createServer(app);
